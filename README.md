@@ -6,9 +6,9 @@ See your usage at a glance from your menu bar. No digging through dashboards.
 
 ## Download
 
-[**Download the latest release**](https://github.com/robinebers/openusage/releases/latest) (macOS, Apple Silicon & Intel)
+[**Releases will be published here**](https://github.com/abyssbugg/usage-desktop/releases) when this independent build channel is ready.
 
-The app auto-updates. Install once and you're set.
+Auto-updates are disabled for now while the independent release channel is being configured.
 
 ## What It Does
 
@@ -37,34 +37,28 @@ OpenUsage lives in your menu bar and shows you how much of your AI coding subscr
 - [**Kimi Code**](docs/providers/kimi.md) / session, weekly
 - [**MiniMax**](docs/providers/minimax.md) / coding plan session
 - [**OpenCode Go**](docs/providers/opencode-go.md) / 5h, weekly, monthly spend limits
+- [**Perplexity**](docs/providers/perplexity.md) / requests, searches, research
 - [**Devin**](docs/providers/devin.md) / weekly quota, extra usage
+- [**Synthetic**](docs/providers/synthetic.md) / demo provider metrics
 - [**Z.ai**](docs/providers/zai.md) / session, weekly, web searches
 
 Community contributions welcome.
 
-Want a provider that's not listed? [Open an issue.](https://github.com/robinebers/openusage/issues/new)
+Want a provider that's not listed? [Open an issue.](https://github.com/abyssbugg/usage-desktop/issues/new)
 
-## Open Source, Community Driven
+## Independent Project
 
-OpenUsage is built by its users. Hundreds of people use it daily, and the project grows through community contributions: new providers, bug fixes, and ideas.
+This repository is the independent development home for this app.
 
-I maintain the project as a guide and quality gatekeeper, but this is your app as much as mine. If something is missing or broken, the best way to get it fixed is to contribute by opening an issue, or submitting a PR.
+The original OpenUsage project remains available as an upstream reference. Useful upstream fixes can be reviewed and brought into this repo deliberately.
 
-Plugins are currently bundled as we build our the API, but soon will be made flexible so you can build and load their own.
-
-<a href="https://www.star-history.com/?repos=robinebers%2Fopenusage&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=robinebers/openusage&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=robinebers/openusage&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=robinebers/openusage&type=date&legend=top-left" />
- </picture>
-</a>
+Plugins are currently bundled while the app stays focused on a small internal workflow.
 
 ### How to Contribute
 
 - **Add a provider.** Each one is just a plugin. See the [Plugin API](docs/plugins/api.md).
 - **Fix a bug.** PRs welcome. Provide before/after screenshots.
-- **Request a feature.** [Open an issue](https://github.com/robinebers/openusage/issues/new) and make your case.
+- **Request a feature.** [Open an issue](https://github.com/abyssbugg/usage-desktop/issues/new) and make your case.
 
 Keep it simple. No feature creep, no AI-generated commit messages, test your changes.
 
@@ -76,9 +70,7 @@ OpenUsage is a real-world example of what I teach in the [AI Builder's Blueprint
 
 ## Sponsors
 
-OpenUsage is supported by our sponsors. Become a sponsor to get your logo here and on [openusage.ai](https://openusage.ai).
-
-[Become a Sponsor](https://github.com/sponsors/robinebers)
+This independent repository does not currently use sponsorship links.
 
 <!-- Add sponsor logos here -->
 
