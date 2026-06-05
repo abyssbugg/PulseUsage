@@ -1,4 +1,4 @@
-# OpenUsage
+# PulseUsage
 
 ## Instructions
 - CRITICAL: Use simple, concise language. Avoid overtechnical jargon.

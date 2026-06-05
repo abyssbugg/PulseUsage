@@ -708,5 +708,5 @@
     throw LOGIN_MESSAGE
   }
 
-  globalThis.__openusage_plugin = { id: "antigravity", probe: probe }
+  globalThis.__pulseusage_plugin = { id: "antigravity", probe: probe }
 })()

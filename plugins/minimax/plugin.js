@@ -451,5 +451,5 @@
     return result
   }
 
-  globalThis.__openusage_plugin = { id: "minimax", probe }
+  globalThis.__pulseusage_plugin = { id: "minimax", probe }
 })()

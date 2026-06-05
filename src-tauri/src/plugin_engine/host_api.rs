@@ -150,7 +150,7 @@ fn current_macos_keychain_account_from_user_env(user_env: Option<String>) -> Str
             }
         })
         .or_else(|| read_env_value_via_command("id", &["-un"]))
-        .unwrap_or_else(|| "openusage-user".to_string())
+        .unwrap_or_else(|| "pulseusage-user".to_string())
 }
 
 fn current_macos_keychain_account() -> String {
@@ -640,7 +640,7 @@ pub(crate) fn inject_host_api_with_deadline<'js>(
     inject_ccusage(ctx, &host, plugin_id, deadline)?;
 
     probe_ctx.set("host", host)?;
-    globals.set("__openusage_ctx", probe_ctx)?;
+    globals.set("__pulseusage_ctx", probe_ctx)?;
 
     Ok(())
 }
@@ -948,8 +948,8 @@ fn inject_http<'js>(
     ctx.eval::<(), _>(
         r#"
         (function() {
-            // Will be patched after __openusage_ctx is set.
-            if (typeof __openusage_ctx !== "undefined") {
+            // Will be patched after __pulseusage_ctx is set.
+            if (typeof __pulseusage_ctx !== "undefined") {
                 void 0;
             }
         })();
@@ -966,8 +966,8 @@ pub fn patch_http_wrapper(ctx: &rquickjs::Ctx<'_>) -> rquickjs::Result<()> {
     ctx.eval::<(), _>(
         r#"
         (function() {
-            var rawFn = __openusage_ctx.host.http._requestRaw;
-            __openusage_ctx.host.http.request = function(req) {
+            var rawFn = __pulseusage_ctx.host.http._requestRaw;
+            __pulseusage_ctx.host.http.request = function(req) {
                 var json = JSON.stringify({
                     url: req.url,
                     method: req.method || "GET",
@@ -985,12 +985,12 @@ pub fn patch_http_wrapper(ctx: &rquickjs::Ctx<'_>) -> rquickjs::Result<()> {
     )
 }
 
-/// Inject utility APIs (line builders, formatters, base64, jwt) onto __openusage_ctx
+/// Inject utility APIs (line builders, formatters, base64, jwt) onto __pulseusage_ctx
 pub fn inject_utils(ctx: &rquickjs::Ctx<'_>) -> rquickjs::Result<()> {
     ctx.eval::<(), _>(
         r#"
         (function() {
-            var ctx = __openusage_ctx;
+            var ctx = __pulseusage_ctx;
 
             // Line builders (options object API)
             ctx.line = {
@@ -1505,8 +1505,8 @@ pub fn patch_ls_wrapper(ctx: &rquickjs::Ctx<'_>) -> rquickjs::Result<()> {
     ctx.eval::<(), _>(
         r#"
         (function() {
-            var rawFn = __openusage_ctx.host.ls._discoverRaw;
-            __openusage_ctx.host.ls.discover = function(opts) {
+            var rawFn = __pulseusage_ctx.host.ls._discoverRaw;
+            __pulseusage_ctx.host.ls.discover = function(opts) {
                 var optsJson;
                 try { optsJson = JSON.stringify(opts); } catch (e) { return null; }
                 var json = rawFn(optsJson);
@@ -2438,8 +2438,8 @@ pub fn patch_ccusage_wrapper(ctx: &rquickjs::Ctx<'_>) -> rquickjs::Result<()> {
     ctx.eval::<(), _>(
         r#"
         (function() {
-            var rawFn = __openusage_ctx.host.ccusage._queryRaw;
-            __openusage_ctx.host.ccusage.query = function(opts) {
+            var rawFn = __pulseusage_ctx.host.ccusage._queryRaw;
+            __pulseusage_ctx.host.ccusage.query = function(opts) {
                 var result = rawFn(JSON.stringify(opts || {}));
                 try {
                     var parsed = JSON.parse(result);
@@ -3048,7 +3048,7 @@ mod tests {
             let app_data = std::env::temp_dir();
             inject_host_api(&ctx, "test", &app_data, "0.0.0").expect("inject host api");
             let globals = ctx.globals();
-            let probe_ctx: Object = globals.get("__openusage_ctx").expect("probe ctx");
+            let probe_ctx: Object = globals.get("__pulseusage_ctx").expect("probe ctx");
             let host: Object = probe_ctx.get("host").expect("host");
             let crypto: Object = host.get("crypto").expect("crypto");
             let _decrypt: Function = crypto.get("decryptAes256Gcm").expect("decryptAes256Gcm");
@@ -3065,7 +3065,7 @@ mod tests {
             let app_data = std::env::temp_dir();
             inject_host_api(&ctx, "test", &app_data, "0.0.0").expect("inject host api");
             let js_expr = format!(
-                r#"__openusage_ctx.host.crypto.decryptAes256Gcm("{}", "{}")"#,
+                r#"__pulseusage_ctx.host.crypto.decryptAes256Gcm("{}", "{}")"#,
                 envelope, key_b64
             );
             let decrypted: String = ctx.eval(js_expr).expect("js decrypt");
@@ -3082,7 +3082,7 @@ mod tests {
             inject_host_api(&ctx, "test", &app_data, "0.0.0").expect("inject host api");
             // Vector: `printf '%s' 'hello' | shasum -a 256`
             let result: String = ctx
-                .eval(r#"__openusage_ctx.host.crypto.sha256Hex("hello")"#)
+                .eval(r#"__pulseusage_ctx.host.crypto.sha256Hex("hello")"#)
                 .expect("js sha256");
             assert_eq!(
                 result,
@@ -3090,7 +3090,7 @@ mod tests {
             );
 
             let empty: String = ctx
-                .eval(r#"__openusage_ctx.host.crypto.sha256Hex("")"#)
+                .eval(r#"__pulseusage_ctx.host.crypto.sha256Hex("")"#)
                 .expect("js sha256 empty");
             assert_eq!(
                 empty,
@@ -3107,7 +3107,7 @@ mod tests {
             let app_data = std::env::temp_dir();
             inject_host_api(&ctx, "test", &app_data, "0.0.0").expect("inject host api");
             let globals = ctx.globals();
-            let probe_ctx: Object = globals.get("__openusage_ctx").expect("probe ctx");
+            let probe_ctx: Object = globals.get("__pulseusage_ctx").expect("probe ctx");
             let host: Object = probe_ctx.get("host").expect("host");
             let keychain: Object = host.get("keychain").expect("keychain");
             let _read: Function = keychain
@@ -3207,7 +3207,7 @@ mod tests {
             let app_data = std::env::temp_dir();
             inject_host_api(&ctx, "test", &app_data, "0.0.0").expect("inject host api");
             let globals = ctx.globals();
-            let probe_ctx: Object = globals.get("__openusage_ctx").expect("probe ctx");
+            let probe_ctx: Object = globals.get("__pulseusage_ctx").expect("probe ctx");
             let host: Object = probe_ctx.get("host").expect("host");
             let env: Object = host.get("env").expect("env");
             let get: Function = env.get("get").expect("get");
@@ -3218,7 +3218,7 @@ mod tests {
                     get.call((name.to_string(),)).expect("get whitelisted var");
                 assert_eq!(value, expected, "{name} should match host env resolver");
 
-                let js_expr = format!(r#"__openusage_ctx.host.env.get("{}")"#, name);
+                let js_expr = format!(r#"__pulseusage_ctx.host.env.get("{}")"#, name);
                 let js_value: Option<String> = ctx.eval(js_expr).expect("js get whitelisted var");
                 assert_eq!(
                     js_value, expected,
@@ -3235,7 +3235,7 @@ mod tests {
             );
 
             let js_blocked: Option<String> = ctx
-                .eval(r#"__openusage_ctx.host.env.get("__OPENUSAGE_TEST_NOT_WHITELISTED__")"#)
+                .eval(r#"__pulseusage_ctx.host.env.get("__OPENUSAGE_TEST_NOT_WHITELISTED__")"#)
                 .expect("js get blocked var");
             assert!(
                 js_blocked.is_none(),
@@ -3275,7 +3275,7 @@ mod tests {
             let app_data = std::env::temp_dir();
             inject_host_api(&ctx, "test", &app_data, "0.0.0").expect("inject host api");
             let globals = ctx.globals();
-            let probe_ctx: Object = globals.get("__openusage_ctx").expect("probe ctx");
+            let probe_ctx: Object = globals.get("__pulseusage_ctx").expect("probe ctx");
             let host: Object = probe_ctx.get("host").expect("host");
             let env: Object = host.get("env").expect("env");
             let get: Function = env.get("get").expect("get");
@@ -3288,7 +3288,7 @@ mod tests {
             );
 
             let js_value: Option<String> = ctx
-                .eval(r#"__openusage_ctx.host.env.get("ZAI_API_KEY")"#)
+                .eval(r#"__pulseusage_ctx.host.env.get("ZAI_API_KEY")"#)
                 .expect("js get");
             assert_eq!(
                 js_value.as_deref(),
@@ -3301,8 +3301,8 @@ mod tests {
     #[test]
     fn current_macos_keychain_account_prefers_explicit_user_value() {
         assert_eq!(
-            current_macos_keychain_account_from_user_env(Some("openusage-test-user".to_string())),
-            "openusage-test-user"
+            current_macos_keychain_account_from_user_env(Some("pulseusage-test-user".to_string())),
+            "pulseusage-test-user"
         );
     }
 
@@ -3337,7 +3337,7 @@ mod tests {
     fn keychain_find_generic_password_args_for_account_include_account_and_service() {
         let args = keychain_find_generic_password_args_for_account(
             "Claude Code-credentials",
-            "openusage-test-user",
+            "pulseusage-test-user",
         );
         let rendered: Vec<String> = args
             .into_iter()
@@ -3349,7 +3349,7 @@ mod tests {
             vec![
                 "find-generic-password",
                 "-a",
-                "openusage-test-user",
+                "pulseusage-test-user",
                 "-s",
                 "Claude Code-credentials",
                 "-w",
@@ -3382,7 +3382,7 @@ mod tests {
     fn keychain_add_generic_password_args_for_account_include_update_account_service_and_value() {
         let args = keychain_add_generic_password_args_for_account(
             "Claude Code-credentials",
-            "openusage-test-user",
+            "pulseusage-test-user",
             "secret-value",
         );
         let rendered: Vec<String> = args
@@ -3396,7 +3396,7 @@ mod tests {
                 "add-generic-password",
                 "-U",
                 "-a",
-                "openusage-test-user",
+                "pulseusage-test-user",
                 "-s",
                 "Claude Code-credentials",
                 "-w",
@@ -4044,7 +4044,7 @@ mod tests {
 
     #[test]
     fn ccusage_path_entries_with_home_and_existing_path_preserves_order() {
-        let home = std::path::PathBuf::from("/tmp/openusage-home");
+        let home = std::path::PathBuf::from("/tmp/pulseusage-home");
         let existing = std::env::join_paths([
             std::path::PathBuf::from("/usr/bin"),
             std::path::PathBuf::from("/bin"),
@@ -4103,7 +4103,7 @@ mod tests {
 
     #[test]
     fn ccusage_enriched_path_with_preserves_entries_after_join_and_split() {
-        let home = std::path::PathBuf::from("/tmp/openusage-home");
+        let home = std::path::PathBuf::from("/tmp/pulseusage-home");
         let existing = std::env::join_paths([
             std::path::PathBuf::from("/usr/bin"),
             std::path::PathBuf::from("/bin"),
@@ -4131,7 +4131,7 @@ mod tests {
 
     #[test]
     fn nvm_default_bin_path_resolves_version_with_v_prefix() {
-        let home = std::env::temp_dir().join("openusage-test-nvm-v-prefix");
+        let home = std::env::temp_dir().join("pulseusage-test-nvm-v-prefix");
         let alias_dir = home.join(".nvm/alias");
         std::fs::create_dir_all(&alias_dir).expect("create alias dir");
         std::fs::write(alias_dir.join("default"), "v22.16.0").expect("write alias");
@@ -4142,7 +4142,7 @@ mod tests {
 
     #[test]
     fn nvm_default_bin_path_resolves_version_without_v_prefix() {
-        let home = std::env::temp_dir().join("openusage-test-nvm-no-v-prefix");
+        let home = std::env::temp_dir().join("pulseusage-test-nvm-no-v-prefix");
         let alias_dir = home.join(".nvm/alias");
         std::fs::create_dir_all(&alias_dir).expect("create alias dir");
         std::fs::write(alias_dir.join("default"), "22.16.0").expect("write alias");
@@ -4153,7 +4153,7 @@ mod tests {
 
     #[test]
     fn nvm_default_bin_path_returns_none_when_alias_missing() {
-        let home = std::env::temp_dir().join("openusage-test-nvm-no-alias");
+        let home = std::env::temp_dir().join("pulseusage-test-nvm-no-alias");
         let _ = std::fs::remove_dir_all(&home);
         let result = nvm_default_bin_path(&home);
         assert_eq!(result, None);
@@ -4161,7 +4161,7 @@ mod tests {
 
     #[test]
     fn ccusage_path_entries_with_includes_nvm_default_version() {
-        let home = std::env::temp_dir().join("openusage-test-nvm-entries");
+        let home = std::env::temp_dir().join("pulseusage-test-nvm-entries");
         let alias_dir = home.join(".nvm/alias");
         std::fs::create_dir_all(&alias_dir).expect("create alias dir");
         std::fs::write(alias_dir.join("default"), "22.16.0").expect("write alias");
@@ -4385,7 +4385,7 @@ Saved lockfile
         use std::os::unix::fs::PermissionsExt;
 
         let test_id = format!(
-            "openusage-ccusage-legacy-fallback-{}",
+            "pulseusage-ccusage-legacy-fallback-{}",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .expect("system time")
@@ -4510,7 +4510,7 @@ esac
         }
 
         let test_id = format!(
-            "openusage-ccusage-timeout-{}",
+            "pulseusage-ccusage-timeout-{}",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .expect("system time")
