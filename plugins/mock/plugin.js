@@ -74,5 +74,5 @@
     }
   }
 
-  globalThis.__openusage_plugin = { id: "mock", probe }
+  globalThis.__pulseusage_plugin = { id: "mock", probe }
 })()

@@ -3060,40 +3060,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c87def4c32ab89d880effc9e097653c8da5d6ef28e6b539d313baaacfbafcbe"
 
 [[package]]
-name = "openusage"
-version = "0.6.26"
-dependencies = [
- "aes-gcm",
- "base64 0.22.1",
- "dirs 6.0.0",
- "libc",
- "log",
- "objc2",
- "objc2-app-kit",
- "objc2-foundation",
- "objc2-web-kit",
- "regex-lite",
- "reqwest",
- "rquickjs",
- "serde",
- "serde_json",
- "serial_test",
- "sha2 0.11.0",
- "tauri",
- "tauri-build",
- "tauri-nspanel",
- "tauri-plugin-autostart",
- "tauri-plugin-clipboard-manager",
- "tauri-plugin-global-shortcut",
- "tauri-plugin-log",
- "tauri-plugin-opener",
- "tauri-plugin-store",
- "time",
- "tokio",
- "uuid",
-]
-
-[[package]]
 name = "option-ext"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3463,6 +3429,40 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "pulseusage"
+version = "0.6.26"
+dependencies = [
+ "aes-gcm",
+ "base64 0.22.1",
+ "dirs 6.0.0",
+ "libc",
+ "log",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
+ "objc2-web-kit",
+ "regex-lite",
+ "reqwest",
+ "rquickjs",
+ "serde",
+ "serde_json",
+ "serial_test",
+ "sha2 0.11.0",
+ "tauri",
+ "tauri-build",
+ "tauri-nspanel",
+ "tauri-plugin-autostart",
+ "tauri-plugin-clipboard-manager",
+ "tauri-plugin-global-shortcut",
+ "tauri-plugin-log",
+ "tauri-plugin-opener",
+ "tauri-plugin-store",
+ "time",
+ "tokio",
+ "uuid",
 ]
 
 [[package]]

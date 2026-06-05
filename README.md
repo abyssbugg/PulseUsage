@@ -2,17 +2,17 @@
 
 See your usage at a glance from your menu bar. No digging through dashboards.
 
-![OpenUsage Screenshot](screenshot.png)
+![PulseUsage Screenshot](screenshot.png)
 
 ## Download
 
-[**Releases will be published here**](https://github.com/abyssbugg/usage-desktop/releases) when this independent build channel is ready.
+[**Releases will be published here**](https://github.com/abyssbugg/PulseUsage/releases) when this independent build channel is ready.
 
 Auto-updates are disabled for now while the independent release channel is being configured.
 
 ## What It Does
 
-OpenUsage lives in your menu bar and shows you how much of your AI coding subscriptions you've used. Progress bars, badges, and clear labels. No mental math required.
+PulseUsage lives in your menu bar and shows you how much of your AI coding subscriptions you've used. Progress bars, badges, and clear labels. No mental math required.
 
 - **One glance.** All your AI tools, one panel.
 - **Always up-to-date.** Refreshes automatically on a schedule you pick.
@@ -44,7 +44,7 @@ OpenUsage lives in your menu bar and shows you how much of your AI coding subscr
 
 Community contributions welcome.
 
-Want a provider that's not listed? [Open an issue.](https://github.com/abyssbugg/usage-desktop/issues/new)
+Want a provider that's not listed? [Open an issue.](https://github.com/abyssbugg/PulseUsage/issues/new)
 
 ## Independent Project
 
@@ -58,7 +58,7 @@ Plugins are currently bundled while the app stays focused on a small internal wo
 
 - **Add a provider.** Each one is just a plugin. See the [Plugin API](docs/plugins/api.md).
 - **Fix a bug.** PRs welcome. Provide before/after screenshots.
-- **Request a feature.** [Open an issue](https://github.com/abyssbugg/usage-desktop/issues/new) and make your case.
+- **Request a feature.** [Open an issue](https://github.com/abyssbugg/PulseUsage/issues/new) and make your case.
 
 Keep it simple. No feature creep, no AI-generated commit messages, test your changes.
 
@@ -66,7 +66,7 @@ Keep it simple. No feature creep, no AI-generated commit messages, test your cha
 
 Not a single line of code in this project was read or written by hand. 100% AI-generated, AI-reviewed, AI-shipped — using [Cursor](https://cursor.com), [Claude Code](https://docs.anthropic.com/en/docs/claude-code), and [Codex CLI](https://github.com/openai/codex).
 
-OpenUsage is a real-world example of what I teach in the [AI Builder's Blueprint](https://itsbyrob.in/EBDqgJ6) — a proven process for building and shipping software with AI, no coding background required.
+PulseUsage is a real-world example of what I teach in the [AI Builder's Blueprint](https://itsbyrob.in/EBDqgJ6) — a proven process for building and shipping software with AI, no coding background required.
 
 ## Sponsors
 

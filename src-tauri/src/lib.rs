@@ -451,7 +451,7 @@ pub fn run() {
             use tauri::Manager;
 
             let version = app.package_info().version.to_string();
-            log::info!("OpenUsage v{} starting", version);
+            log::info!("PulseUsage v{} starting", version);
 
             // Load config early (lazy init via OnceLock, zero-cost after)
 

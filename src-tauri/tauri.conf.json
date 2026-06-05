@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "OpenUsage",
+  "productName": "PulseUsage",
   "version": "0.6.26",
-  "identifier": "com.sunstory.openusage",
+  "identifier": "com.abyssbugg.pulseusage",
   "build": {
     "beforeDevCommand": "bun run bundle:plugins && bun run dev",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "OpenUsage",
+        "title": "PulseUsage",
         "width": 400,
         "height": 500,
         "resizable": false,

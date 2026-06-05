@@ -1013,5 +1013,5 @@
     cachedUsageData = null
   }
 
-  globalThis.__openusage_plugin = { id: "claude", probe, _resetState }
+  globalThis.__pulseusage_plugin = { id: "claude", probe, _resetState }
 })()
