@@ -9,6 +9,7 @@ See your usage at a glance from your menu bar. No digging through dashboards.
 [**Releases will be published here**](https://github.com/abyssbugg/PulseUsage/releases) when this independent build channel is ready.
 
 Auto-updates are disabled for now while the independent release channel is being configured.
+Current macOS distribution target: direct downloads only, such as GitHub Releases or a direct download link. This project does not require App Store distribution, Apple Developer Program membership, code signing, notarization, or updater artifacts at this stage.
 
 ## What It Does
 
