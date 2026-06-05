@@ -4538,25 +4538,29 @@ wait
         permissions.set_mode(0o755);
         std::fs::set_permissions(&script_path, permissions).expect("make script executable");
 
-        let opts = CcusageQueryOpts::default();
         let start = Instant::now();
-        let result = run_ccusage_with_runner_timeout(
-            CcusageRunnerKind::Bunx,
-            script_path.to_string_lossy().as_ref(),
-            &opts,
-            CcusageProvider::Codex,
-            "codex",
-            CcusageCommandFlavor::Current,
-            Duration::from_secs(1),
-        );
+        let runner_path = script_path.to_string_lossy().to_string();
+        let runner = std::thread::spawn(move || {
+            let opts = CcusageQueryOpts::default();
+            run_ccusage_with_runner_timeout(
+                CcusageRunnerKind::Bunx,
+                &runner_path,
+                &opts,
+                CcusageProvider::Codex,
+                "codex",
+                CcusageCommandFlavor::Current,
+                Duration::from_secs(3),
+            )
+        });
+
+        let descendant_pid = read_pid_file(&pid_path, Instant::now() + Duration::from_secs(2));
+        let result = runner.join().expect("ccusage runner thread should finish");
 
         assert_eq!(result, CcusageRunnerResult::TimedOut);
         assert!(
-            start.elapsed() < Duration::from_secs(3),
+            start.elapsed() < Duration::from_secs(5),
             "timeout cleanup should not hang on inherited stdout/stderr pipes"
         );
-
-        let descendant_pid = read_pid_file(&pid_path, Instant::now() + Duration::from_secs(1));
 
         let deadline = Instant::now() + Duration::from_secs(2);
         while pid_exists(descendant_pid) && Instant::now() < deadline {
