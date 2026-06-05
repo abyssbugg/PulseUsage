@@ -134,8 +134,8 @@ fn write_file(path: String, content: String) -> Result<(), String> {
 ## Building and Distribution
 
 - Configure proper app metadata
-- Set up code signing for distribution
-- Use Tauri's updater for auto-updates
+- Build unsigned downloadable artifacts for GitHub Releases or direct links
+- Do not require Apple Developer membership, code signing, notarization, or auto-updater signing while using the current direct-download distribution plan
 - Test on all target platforms
 
 ## Performance
