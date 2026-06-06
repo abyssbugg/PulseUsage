@@ -22,7 +22,12 @@ if [[ "$BUNDLED_COUNT" -ne "$SOURCE_COUNT" ]]; then
 fi
 
 for REQUIRED_PLUGIN in factory warp; do
-  if [[ -d "plugins/$REQUIRED_PLUGIN" && ! -f "src-tauri/resources/bundled_plugins/$REQUIRED_PLUGIN/plugin.json" ]]; then
+  if [[ ! -d "plugins/$REQUIRED_PLUGIN" ]]; then
+    echo "Error: Required plugin '$REQUIRED_PLUGIN' not found in source."
+    exit 1
+  fi
+
+  if [[ ! -f "src-tauri/resources/bundled_plugins/$REQUIRED_PLUGIN/plugin.json" ]]; then
     echo "Error: Required plugin '$REQUIRED_PLUGIN' was not bundled."
     exit 1
   fi

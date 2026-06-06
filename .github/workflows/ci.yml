@@ -26,6 +26,8 @@ jobs:
       - run: bun install
       - name: Bundle plugins
         run: bun run bundle:plugins
+      - name: Release script guard tests
+        run: bash scripts/build-release-guards.test.sh
 
       - name: Type-check and build
         run: bun run build
