@@ -41,6 +41,7 @@ PulseUsage lives in your menu bar and shows you how much of your AI coding subsc
 - [**Perplexity**](docs/providers/perplexity.md) / requests, searches, research
 - [**Devin**](docs/providers/devin.md) / weekly quota, extra usage
 - [**Synthetic**](docs/providers/synthetic.md) / demo provider metrics
+- [**Warp**](docs/providers/warp.md) / base credits, personal credits, auto-reload, spend limit
 - [**Z.ai**](docs/providers/zai.md) / session, weekly, web searches
 
 Community contributions welcome.
