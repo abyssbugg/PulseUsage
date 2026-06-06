@@ -3546,7 +3546,7 @@ mod tests {
 
     #[test]
     fn redact_body_redacts_user_id_and_email() {
-        let body = r#"{"user_id": "user-iupzZ7KFykMLrnzpkHSq7wjo", "email": "rob@sunstory.com"}"#;
+        let body = r#"{"user_id": "user-iupzZ7KFykMLrnzpkHSq7wjo", "email": "sample@example.com"}"#;
         let redacted = redact_body(body);
         assert!(
             !redacted.contains("user-iupzZ7KFykMLrnzpkHSq7wjo"),
@@ -3554,7 +3554,7 @@ mod tests {
             redacted
         );
         assert!(
-            !redacted.contains("rob@sunstory.com"),
+            !redacted.contains("sample@example.com"),
             "email should be redacted, got: {}",
             redacted
         );
@@ -3565,7 +3565,7 @@ mod tests {
             redacted
         );
         assert!(
-            redacted.contains("rob@....com"),
+            redacted.contains("samp....com"),
             "email should show first4...last4, got: {}",
             redacted
         );
@@ -3599,7 +3599,7 @@ mod tests {
 
     #[test]
     fn redact_body_redacts_devin_org_and_account_display_name() {
-        let body = r#"{"orgId":"org-6b6e9de248db472bb25b296599ea3dc0","accountDisplayName":"rob@sunstory.com","devinInfo":{"org_id":"org-abcdef1234567890","account_display_name":"team@example.com"}}"#;
+        let body = r#"{"orgId":"org-6b6e9de248db472bb25b296599ea3dc0","accountDisplayName":"user@example.com","devinInfo":{"org_id":"org-abcdef1234567890","account_display_name":"team@example.com"}}"#;
         let redacted = redact_body(body);
         assert!(
             !redacted.contains("org-6b6e9de248db472bb25b296599ea3dc0"),
@@ -3607,7 +3607,7 @@ mod tests {
             redacted
         );
         assert!(
-            !redacted.contains("rob@sunstory.com"),
+            !redacted.contains("user@example.com"),
             "accountDisplayName should be redacted, got: {}",
             redacted
         );
@@ -3627,7 +3627,7 @@ mod tests {
             redacted
         );
         assert!(
-            redacted.contains("rob@....com"),
+            redacted.contains("user....com"),
             "accountDisplayName should show first4...last4, got: {}",
             redacted
         );
@@ -3635,7 +3635,7 @@ mod tests {
 
     #[test]
     fn redact_body_redacts_team_id_payment_id_and_paths() {
-        let body = r#"{"teamId":"cc1ac023-9ff5-4c1f-a5a4-ae2a82df4243","paymentId":"cus_S5m1PGxjLWoc1c","binaryPath":"/opt/homebrew/bin/bunx","homePath":"/Users/rebers/.claude"}"#;
+        let body = r#"{"teamId":"cc1ac023-9ff5-4c1f-a5a4-ae2a82df4243","paymentId":"cus_S5m1PGxjLWoc1c","binaryPath":"/opt/homebrew/bin/bunx","homePath":"/Users/sample/.claude"}"#;
         let redacted = redact_body(body);
         assert!(
             !redacted.contains("cc1ac023-9ff5-4c1f-a5a4-ae2a82df4243"),
@@ -3653,7 +3653,7 @@ mod tests {
             redacted
         );
         assert!(
-            !redacted.contains("/Users/rebers/.claude"),
+            !redacted.contains("/Users/sample/.claude"),
             "path should be redacted, got: {}",
             redacted
         );
@@ -3712,10 +3712,10 @@ mod tests {
 
     #[test]
     fn redact_log_message_redacts_account_and_paths() {
-        let msg = "keychain read: service=Claude Code-credentials, account=rebers path=/opt/homebrew/bin/bunx home=/Users/rebers/.claude";
+        let msg = "keychain read: service=Claude Code-credentials, account=sample path=/opt/homebrew/bin/bunx home=/Users/sample/.claude";
         let redacted = redact_log_message(msg);
         assert!(
-            !redacted.contains("account=rebers"),
+            !redacted.contains("account=sample"),
             "account should be redacted, got: {}",
             redacted
         );
@@ -3725,7 +3725,7 @@ mod tests {
             redacted
         );
         assert!(
-            !redacted.contains("/Users/rebers/.claude"),
+            !redacted.contains("/Users/sample/.claude"),
             "path should be redacted, got: {}",
             redacted
         );
@@ -3744,10 +3744,10 @@ mod tests {
     #[test]
     fn redact_body_redacts_login_and_analytics_tracking_id() {
         let body =
-            r#"{"login":"robinebers","analytics_tracking_id":"c9df3f012bb8c2eb7aae6868ee8da6cf"}"#;
+            r#"{"login":"testuser","analytics_tracking_id":"c9df3f012bb8c2eb7aae6868ee8da6cf"}"#;
         let redacted = redact_body(body);
         assert!(
-            !redacted.contains("robinebers"),
+            !redacted.contains("testuser"),
             "login should be redacted, got: {}",
             redacted
         );
@@ -3772,19 +3772,19 @@ mod tests {
     #[test]
     fn redact_body_redacts_name_field() {
         let body =
-            r#"{"userStatus":{"name":"Robin Ebers","email":"rob@sunstory.com","planStatus":{}}}"#;
+            r#"{"userStatus":{"name":"Sample User","email":"sample@example.com","planStatus":{}}}"#;
         let redacted = redact_body(body);
         assert!(
-            !redacted.contains("Robin Ebers"),
+            !redacted.contains("Sample User"),
             "name should be redacted, got: {}",
             redacted
         );
         assert!(
-            !redacted.contains("rob@sunstory.com"),
+            !redacted.contains("sample@example.com"),
             "email should be redacted, got: {}",
             redacted
         );
-        // "Robin Ebers" is 11 chars (<=12) so becomes [REDACTED]
+        // "Sample User" is 11 chars (<=12) so becomes [REDACTED]
         assert!(
             redacted.contains("\"name\": \"[REDACTED]\""),
             "name should show [REDACTED], got: {}",

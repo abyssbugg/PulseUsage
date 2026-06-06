@@ -2,7 +2,7 @@
 name = "pulseusage"
 version = "0.6.27"
 description = "PulseUsage is an open source AI subscription limit tracker"
-authors = ["Robin Ebers"]
+authors = ["abyssbugg"]
 edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
