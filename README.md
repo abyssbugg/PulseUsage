@@ -69,6 +69,21 @@ Keep it simple. No feature creep, no AI-generated commit messages, test your cha
 
 PulseUsage uses AI-assisted development tools such as [Cursor](https://cursor.com), [Claude Code](https://docs.anthropic.com/en/docs/claude-code), and [Codex CLI](https://github.com/openai/codex). Changes should still be reviewed, tested, and kept small.
 
+## Release and Environment Checks
+
+`src-tauri/resources/bundled_plugins/` is generated and gitignored. An empty folder in a checkout is not a release failure by itself.
+
+Before diagnosing missing providers, verify the active checkout and production bundle:
+
+- Update the checkout with `git pull --ff-only origin main`.
+- Confirm source plugins exist, especially `plugins/factory` and `plugins/warp`.
+- Bundle plugins with `bun run bundle:plugins`.
+- Confirm bundled manifests with `find src-tauri/resources/bundled_plugins -maxdepth 2 -name plugin.json`.
+- Build releases with `bun run build:release`; the script fails if bundled plugin manifests are missing.
+- Verify installed app resources under `/Applications/PulseUsage.app/Contents/Resources/resources/bundled_plugins/`.
+
+Provider manifests list supported metrics. Runtime cards show returned metrics, and provider detail pages mark supported metrics as `Not returned` when the provider or local data source does not expose those fields.
+
 ## Sponsors
 
 This independent repository does not currently use sponsorship links.

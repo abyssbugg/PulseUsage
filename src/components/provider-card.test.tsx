@@ -792,6 +792,64 @@ describe("ProviderCard", () => {
     expect(screen.getByText("Two")).toBeInTheDocument()
   })
 
+  it("shows unavailable manifest lines when enabled after a runtime result", () => {
+    render(
+      <ProviderCard
+        name="Detail"
+        displayMode="used"
+        scopeFilter="all"
+        showUnavailableManifestLines
+        lastUpdatedAt={Date.now() - 60_000}
+        skeletonLines={[
+          { type: "progress", label: "Base Credits", scope: "overview" },
+          { type: "text", label: "Personal Credits", scope: "overview" },
+          { type: "text", label: "Monthly Spend Limit", scope: "detail" },
+        ]}
+        lines={[
+          {
+            type: "progress",
+            label: "Base Credits",
+            used: 10,
+            limit: 100,
+            format: { kind: "count", suffix: "credits" },
+          },
+        ]}
+      />
+    )
+    expect(screen.getByText("Base Credits")).toBeInTheDocument()
+    expect(screen.getByText("Personal Credits")).toBeInTheDocument()
+    expect(screen.getByText("Monthly Spend Limit")).toBeInTheDocument()
+    expect(screen.getAllByText("Not returned")).toHaveLength(2)
+    expect(screen.getAllByText("Provider data did not include this metric")).toHaveLength(2)
+  })
+
+  it("does not show unavailable manifest lines by default", () => {
+    render(
+      <ProviderCard
+        name="Overview"
+        displayMode="used"
+        scopeFilter="overview"
+        lastUpdatedAt={Date.now() - 60_000}
+        skeletonLines={[
+          { type: "progress", label: "Base Credits", scope: "overview" },
+          { type: "text", label: "Personal Credits", scope: "overview" },
+        ]}
+        lines={[
+          {
+            type: "progress",
+            label: "Base Credits",
+            used: 10,
+            limit: 100,
+            format: { kind: "count", suffix: "credits" },
+          },
+        ]}
+      />
+    )
+    expect(screen.getByText("Base Credits")).toBeInTheDocument()
+    expect(screen.queryByText("Personal Credits")).not.toBeInTheDocument()
+    expect(screen.queryByText("Not returned")).not.toBeInTheDocument()
+  })
+
   it("filters skeleton lines during loading", () => {
     render(
       <ProviderCard

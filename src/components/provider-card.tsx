@@ -31,6 +31,7 @@ interface ProviderCardProps {
   lastUpdatedAt?: number | null
   onRetry?: () => void
   scopeFilter?: "overview" | "all"
+  showUnavailableManifestLines?: boolean
   displayMode: DisplayMode
   resetTimerDisplayMode?: ResetTimerDisplayMode
   timeFormatMode?: TimeFormatMode
@@ -106,6 +107,7 @@ export function ProviderCard({
   lastUpdatedAt,
   onRetry,
   scopeFilter = "all",
+  showUnavailableManifestLines = false,
   displayMode,
   resetTimerDisplayMode = "relative",
   timeFormatMode = "auto",
@@ -129,14 +131,26 @@ export function ProviderCard({
   const filteredLines = scopeFilter === "all"
     ? lines
     : lines.filter(line => overviewLabels.has(line.label))
+  const hasRuntimeResult = lastUpdatedAt != null || filteredLines.length > 0
+  const unavailableLines: MetricLine[] = showUnavailableManifestLines && hasRuntimeResult
+    ? filteredSkeletonLines
+        .filter((line) => !filteredLines.some((runtimeLine) => runtimeLine.label === line.label))
+        .map((line) => ({
+          type: "text",
+          label: line.label,
+          value: "Not returned",
+          subtitle: "Provider data did not include this metric",
+        }))
+    : []
+  const displayLines = [...filteredLines, ...unavailableLines]
 
-  const hasResetCountdown = filteredLines.some(
+  const hasResetCountdown = displayLines.some(
     (line) => line.type === "progress" && Boolean(line.resetsAt)
   )
 
   // "has ever loaded" — true if either we have a prior success timestamp,
   // or the parent is passing lines directly (tests + legacy state paths).
-  const hasStaleData = lastUpdatedAt != null || filteredLines.length > 0
+  const hasStaleData = lastUpdatedAt != null || displayLines.length > 0
   const isRefreshingWithData = loading && hasStaleData
 
   const tickerIntervalMs = cooldownRemainingMs > 0 ? 1000 : 30_000
@@ -305,7 +319,7 @@ export function ProviderCard({
 
         {hasStaleData && (
           <div className="space-y-4">
-            {groupLinesByType(filteredLines).map((group, gi) =>
+            {groupLinesByType(displayLines).map((group, gi) =>
               group.kind === "text" ? (
                 <div key={gi} className="space-y-1">
                   {group.lines.map((line, li) => (

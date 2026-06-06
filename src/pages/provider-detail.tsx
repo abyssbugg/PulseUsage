@@ -41,6 +41,7 @@ export function ProviderDetailPage({
       lastUpdatedAt={plugin.lastUpdatedAt}
       onRetry={onRetry}
       scopeFilter="all"
+      showUnavailableManifestLines
       displayMode={displayMode}
       resetTimerDisplayMode={resetTimerDisplayMode}
       timeFormatMode={timeFormatMode}
