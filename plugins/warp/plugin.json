@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "warp",
+  "name": "Warp",
+  "version": "0.0.1",
+  "entry": "plugin.js",
+  "icon": "icon.svg",
+  "brandColor": "#353534",
+  "lines": [
+    { "type": "progress", "label": "Base Credits", "scope": "overview", "primaryOrder": 1 },
+    { "type": "text", "label": "Personal Credits", "scope": "overview" },
+    { "type": "text", "label": "Monthly Spend Limit", "scope": "detail" },
+    { "type": "badge", "label": "Auto-reload", "scope": "detail" },
+    { "type": "text", "label": "Purchased This Month", "scope": "detail" }
+  ]
+}

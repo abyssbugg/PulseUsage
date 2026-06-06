@@ -41,6 +41,9 @@ export const makeCtx = () => {
       env: {
         get: vi.fn(() => null),
       },
+      plist: {
+        read: vi.fn((path) => files.get(path)),
+      },
       keychain: {
         readGenericPassword: vi.fn(),
         readGenericPasswordForCurrentUser: vi.fn(),

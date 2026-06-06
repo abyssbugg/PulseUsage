@@ -631,6 +631,7 @@ pub(crate) fn inject_host_api_with_deadline<'js>(
     let host = Object::new(ctx.clone())?;
     inject_log(ctx, &host, plugin_id)?;
     inject_fs(ctx, &host)?;
+    inject_plist(ctx, &host)?;
     inject_crypto(ctx, &host)?;
     inject_env(ctx, &host, plugin_id)?;
     inject_http(ctx, &host, plugin_id, deadline)?;
@@ -739,6 +740,46 @@ fn inject_fs<'js>(ctx: &Ctx<'js>, host: &Object<'js>) -> rquickjs::Result<()> {
     )?;
 
     host.set("fs", fs_obj)?;
+    Ok(())
+}
+
+fn inject_plist<'js>(ctx: &Ctx<'js>, host: &Object<'js>) -> rquickjs::Result<()> {
+    let plist_obj = Object::new(ctx.clone())?;
+
+    plist_obj.set(
+        "read",
+        Function::new(
+            ctx.clone(),
+            move |ctx_inner: Ctx<'_>, path: String| -> rquickjs::Result<String> {
+                if !cfg!(target_os = "macos") {
+                    return Err(Exception::throw_message(
+                        &ctx_inner,
+                        "plist API is only supported on macOS",
+                    ));
+                }
+
+                let expanded = expand_path(&path);
+                let output = std::process::Command::new("plutil")
+                    .args(["-convert", "json", "-o", "-", &expanded])
+                    .output()
+                    .map_err(|e| {
+                        Exception::throw_message(&ctx_inner, &format!("plist read failed: {}", e))
+                    })?;
+
+                if !output.status.success() {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    return Err(Exception::throw_message(
+                        &ctx_inner,
+                        &format!("plist read failed: {}", stderr.trim()),
+                    ));
+                }
+
+                Ok(String::from_utf8_lossy(&output.stdout).to_string())
+            },
+        )?,
+    )?;
+
+    host.set("plist", plist_obj)?;
     Ok(())
 }
 
