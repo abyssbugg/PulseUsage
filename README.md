@@ -6,10 +6,11 @@ See your usage at a glance from your menu bar. No digging through dashboards.
 
 ## Download
 
-[**Releases will be published here**](https://github.com/abyssbugg/PulseUsage/releases) when this independent build channel is ready.
+[**Download PulseUsage from GitHub Releases**](https://github.com/abyssbugg/PulseUsage/releases).
 
-Auto-updates are disabled for now while the independent release channel is being configured.
-Current macOS distribution target: direct downloads only, such as GitHub Releases or a direct download link. This project does not require App Store distribution, Apple Developer Program membership, code signing, notarization, or updater artifacts at this stage.
+Current macOS distribution: direct GitHub Releases downloads.
+Binary app auto-updates are not implemented yet. PulseUsage can auto-refresh provider usage data on a schedule, but that is separate from updating the app itself.
+Downloaded macOS builds may show Gatekeeper warnings until signing and notarization are configured.
 
 ## What It Does
 
@@ -50,9 +51,9 @@ Want a provider that's not listed? [Open an issue.](https://github.com/abyssbugg
 
 ## Independent Project
 
-This repository is the independent development home for this app.
+This repository is the independent development home for PulseUsage.
 
-The original OpenUsage project remains available as an upstream reference. Useful upstream fixes can be reviewed and brought into this repo deliberately.
+Useful upstream fixes can be reviewed and brought into this repo deliberately.
 
 Plugins are currently bundled while the app stays focused on a small internal workflow.
 
@@ -64,11 +65,9 @@ Plugins are currently bundled while the app stays focused on a small internal wo
 
 Keep it simple. No feature creep, no AI-generated commit messages, test your changes.
 
-## Built Entirely with AI
+## Development Notes
 
-Not a single line of code in this project was read or written by hand. 100% AI-generated, AI-reviewed, AI-shipped — using [Cursor](https://cursor.com), [Claude Code](https://docs.anthropic.com/en/docs/claude-code), and [Codex CLI](https://github.com/openai/codex).
-
-PulseUsage is a real-world example of what I teach in the [AI Builder's Blueprint](https://itsbyrob.in/EBDqgJ6) — a proven process for building and shipping software with AI, no coding background required.
+PulseUsage uses AI-assisted development tools such as [Cursor](https://cursor.com), [Claude Code](https://docs.anthropic.com/en/docs/claude-code), and [Codex CLI](https://github.com/openai/codex). Changes should still be reviewed, tested, and kept small.
 
 ## Sponsors
 
@@ -78,7 +77,10 @@ This independent repository does not currently use sponsorship links.
 
 ## Credits
 
-Inspired by [CodexBar](https://github.com/steipete/CodexBar) by [@steipete](https://github.com/steipete). Same idea, very different approach.
+Same idea, very different approach.
+
+- Based on [OpenUsage](https://github.com/robinebers/openusage), originally by [Robin Ebers](https://github.com/robinebers), under the MIT license.
+- Inspired by [CodexBar](https://github.com/steipete/CodexBar) by [@steipete](https://github.com/steipete).
 
 ## License
 

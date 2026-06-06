@@ -551,7 +551,7 @@ describe("ProviderCard", () => {
     expect(screen.getByText("90% used at reset")).toBeInTheDocument()
     expect(screen.getByText("Limit in 8h 0m")).toBeInTheDocument()
 
-    // On-track hides the marker (like CodexBar); only ahead + behind show it
+    // On-track hides the marker; only ahead + behind show it
     const markers = document.querySelectorAll<HTMLElement>('[data-slot="progress-marker"]')
     expect(markers).toHaveLength(2)
     expect(markers[0]?.style.left).toBe("50%")

@@ -1,8 +1,8 @@
-# Trademark Policy
+# Brand Guidelines
 
 ## The PulseUsage Brand
 
-The "PulseUsage" name, logo, and associated visual identity are trademarks of Robin Ebers. The MIT license covers the source code, not the brand.
+The "PulseUsage" name, logo, and associated visual identity identify the official `abyssbugg/PulseUsage` project. The MIT license covers the source code, not the project brand assets.
 
 ## What You Can Do
 
@@ -19,7 +19,7 @@ The "PulseUsage" name, logo, and associated visual identity are trademarks of Ro
 
 ## Forks
 
-If you fork PulseUsage, you must:
+If you fork PulseUsage, you should:
 
 1. Choose a different name for your fork
 2. Remove the PulseUsage logo and branding
@@ -27,4 +27,4 @@ If you fork PulseUsage, you must:
 
 ## Questions
 
-If you are unsure whether your use of the PulseUsage brand is allowed, contact [rob@robinebers.com](mailto:rob@robinebers.com).
+If you are unsure whether your use of the PulseUsage brand is appropriate, contact abyssbugg@agentmail.to.
