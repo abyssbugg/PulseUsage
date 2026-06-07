@@ -60,6 +60,94 @@ Returns rate limit windows and optional credits.
 
 Both rate_limit windows are enforced simultaneously — hitting either limit throttles the user.
 
+## Provider health
+
+Last audited: 2026-06-07.
+
+Live evidence: file-based Codex auth was present with access token, refresh token, and account ID. `/backend-api/wham/usage` returned HTTP 200 for a Team account. Local `ccusage codex daily --json --order desc` returned history for the last 30 days.
+
+Observed Team live response shape (key parser fields):
+
+The live payload also included account/user identifiers and nullable metadata fields such as `promo`, `rate_limit_reached_type`, `referral_beacon`, and `credits.overage_limit_reached`; those are not consumed by the parser.
+
+```jsonc
+{
+  "plan_type": "team",
+  "rate_limit": {
+    "allowed": true,
+    "limit_reached": false,
+    "primary_window": {
+      "used_percent": 1,
+      "reset_at": 1780840800,
+      "reset_after_seconds": 3600,
+      "limit_window_seconds": 18000
+    },
+    "secondary_window": {
+      "used_percent": 2,
+      "reset_at": 1780927200,
+      "reset_after_seconds": 86400,
+      "limit_window_seconds": 604800
+    }
+  },
+  "additional_rate_limits": null,
+  "code_review_rate_limit": null,
+  "credits": {
+    "has_credits": false,
+    "unlimited": false,
+    "balance": null,
+    "approx_local_messages": null,
+    "approx_cloud_messages": null
+  },
+  "rate_limit_reset_credits": {
+    "available_count": 0
+  },
+  "spend_control": {
+    "reached": false,
+    "individual_limit": null
+  }
+}
+```
+
+Observed local history shape:
+
+```jsonc
+{
+  "daily": [
+    {
+      "date": "2026-06-04",
+      "totalTokens": 123,
+      "costUSD": 0.12,
+      "models": {
+        "gpt-5.5": {
+          "totalTokens": 123
+        }
+      }
+    }
+  ],
+  "totals": {
+    "totalTokens": 123,
+    "costUSD": 0.12
+  }
+}
+```
+
+Metric classification:
+
+| Metric | Classification | Evidence |
+|---|---|---|
+| Session | Required | Present in live Team response as `rate_limit.primary_window`; parser returns this line. |
+| Weekly | Required | Present in live Team response as `rate_limit.secondary_window`; parser returns this line. |
+| Credits | Optional | Live response had `credits.has_credits: false`; parser returns zero remaining credits when the credits object explicitly reports no credits. |
+| Spark | Plan-dependent | Live `additional_rate_limits` was `null`; parser only returns this when model-specific limits are present. |
+| Spark Weekly | Plan-dependent | Live `additional_rate_limits` was `null`; parser only returns this when model-specific weekly limits are present. |
+| Reviews | Plan-dependent | Live `code_review_rate_limit` was `null`; parser only returns this when review limits are present. |
+| Today | Optional | Returned from local `ccusage` history when available. |
+| Yesterday | Optional | Returned from local `ccusage` history when available. |
+| Last 30 Days | Optional | Returned from local `ccusage` history when available and token totals are present. |
+| Usage Trend | Optional | Returned from local `ccusage` history when chartable daily totals exist. |
+
+Audit result: parser matched the observed Team live shape and local history; no parser code fix was applied.
+
 ## Authentication
 
 ### Credential Storage Locations

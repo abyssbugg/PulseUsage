@@ -319,6 +319,89 @@ describe("cursor plugin", () => {
     expect(totalLine.limit).toBe(100)
   })
 
+  it("handles current live Free response shape with percent-only usage and no credits", async () => {
+    const ctx = makeCtx()
+    ctx.host.sqlite.query.mockReturnValue(JSON.stringify([{ value: "token" }]))
+    ctx.host.http.request.mockImplementation((opts) => {
+      const url = String(opts.url)
+      if (url.includes("GetCurrentPeriodUsage")) {
+        return {
+          status: 200,
+          bodyText: JSON.stringify({
+            autoBucketModels: ["default", "claude-4-sonnet"],
+            autoModelSelectedDisplayMessage: "You've used 0% of your included total usage",
+            billingCycleEnd: "1782689028089",
+            billingCycleStart: "1780010628089",
+            displayMessage: "You've used 0% of your included usage",
+            displayThreshold: 200,
+            namedModelSelectedDisplayMessage: "You've used 0% of your included API usage",
+            planUsage: {
+              apiPercentUsed: 0,
+              autoPercentUsed: 0,
+              bonusTooltip: "We work with model providers to give you free usage beyond what you've purchased. Amounts may vary.",
+              remainingBonus: false,
+              totalPercentUsed: 0,
+            },
+            spendLimitUsage: {
+              individualLimit: 0,
+              limitType: "user",
+              overallLimit: 0,
+              overallRemaining: 0,
+              pooledLimit: 0,
+              pooledRemaining: 0,
+            },
+          }),
+        }
+      }
+      if (url.includes("GetPlanInfo")) {
+        return {
+          status: 200,
+          bodyText: JSON.stringify({
+            nextUpgrade: {
+              description: "Unlock 3x more usage on Agent & more",
+              includedAmountCents: 6000,
+              name: "Pro+",
+              price: "$60/mo",
+              tier: "pro_plus",
+            },
+            planInfo: {
+              billingCycleEnd: "1782689028089",
+              planName: "Free",
+              price: "Free",
+            },
+          }),
+        }
+      }
+      if (url.includes("GetCreditGrantsBalance")) {
+        return { status: 200, bodyText: JSON.stringify({}) }
+      }
+      if (url.includes("/api/auth/stripe") || url.includes("/api/usage")) {
+        return { status: 504, bodyText: "{}" }
+      }
+      return { status: 200, bodyText: "{}" }
+    })
+
+    const plugin = await loadPlugin()
+    const result = plugin.probe(ctx)
+
+    expect(result.plan).toBe("Free")
+    expect(result.lines.map((line) => line.label)).toEqual([
+      "Total usage",
+      "Auto usage",
+      "API usage",
+    ])
+    expect(result.lines.find((line) => line.label === "Total usage")).toMatchObject({
+      type: "progress",
+      used: 0,
+      limit: 100,
+      format: { kind: "percent" },
+      resetsAt: "2026-06-28T23:23:48.089Z",
+    })
+    expect(result.lines.find((line) => line.label === "Credits")).toBeUndefined()
+    expect(result.lines.find((line) => line.label === "Requests")).toBeUndefined()
+    expect(result.lines.find((line) => line.label === "On-demand")).toBeUndefined()
+  })
+
   it("uses percent-only free usage when pooledLimit is zero", async () => {
     const ctx = makeCtx()
     ctx.host.sqlite.query.mockReturnValue(JSON.stringify([{ value: "token" }]))

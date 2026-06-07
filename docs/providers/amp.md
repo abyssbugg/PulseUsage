@@ -49,12 +49,44 @@ Individual credits: $<credits> remaining - https://ampcode.com/settings
 Signed in as <user>
 Individual credits: $<credits> remaining - https://ampcode.com/settings
 ```
+**Workspace credits only:**
+```text
+Signed in as <user>
+Workspace <name>: $<credits> remaining (replenishes automatically) - https://ampcode.com/workspaces/<name>
+```
 
 The plugin parses the display text with regex to extract:
 - **Balance:** `$remaining/$total remaining` → dollar amounts (only if Amp Free enabled)
 - **Rate:** `replenishes +$rate/hour` → replenishment speed (only if Amp Free enabled)
 - **Bonus:** `[+N% bonus for N more days]` → optional promotional bonus 
-- **Credits:** `Individual credits: $N remaining` → paid credits balance
+- **Credits:** `Individual credits: $N remaining` or `Workspace <name>: $N remaining` → paid/workspace credits balance
+
+## Provider health
+
+Last audited: 2026-06-07.
+
+Live evidence: Amp secrets file existed and the JSON-RPC `userDisplayBalanceInfo` call returned HTTP 200. The live display text used a workspace credits-only shape, not the older `Individual credits` shape.
+
+Observed workspace live response shape:
+
+```jsonc
+{
+  "ok": true,
+  "result": {
+    "displayText": "Signed in as <redacted>\nWorkspace <name>: $3.88 remaining (replenishes automatically) - https://ampcode.com/workspaces/<name>"
+  }
+}
+```
+
+Metric classification:
+
+| Metric | Classification | Evidence |
+|--------|----------------|----------|
+| Credits | Required | Present in live workspace response as `Workspace <name>: $3.88 remaining`; parser now returns this line. |
+| Free | Plan-dependent | Live response did not contain `Amp Free`; parser returns this only when free-tier balance text is present. |
+| Bonus | Plan-dependent | Live response did not contain a bonus bracket; parser returns this only for active Free-tier promotions. |
+
+Audit result: parser had a proven workspace credits gap. Fixed by parsing `Workspace <name>: $N remaining` as credits.
 
 ### Usage Calculation (Free tier only)
 

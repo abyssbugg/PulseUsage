@@ -16,8 +16,9 @@
 ## Endpoints
 
 ### POST /api/organization/subscription/usage
-
 Returns Factory subscription usage. Current responses expose UI-style limits; older responses expose raw token allowances.
+
+If this endpoint returns HTTP 405 for POST, the plugin retries with GET using `useCache=true` and, when decoded from the JWT, `userId` as query parameters.
 
 #### Headers
 
@@ -105,6 +106,79 @@ Legacy token response shape:
   "cacheUpdated": false
 }
 ```
+
+Observed Pro live response shape on 2026-06-07:
+
+```jsonc
+{
+  "cacheUpdated": false,
+  "source": "cache",
+  "globalLimit": {},
+  "userLimits": {},
+  "usage": {
+    "startDate": 1770623326000,
+    "endDate": 1772956800000,
+    "standard": {
+      "userTokens": 0,
+      "orgTotalTokensUsed": 0,
+      "orgOverageUsed": 0,
+      "basicAllowance": 20000000,
+      "totalAllowance": 20000000,
+      "orgOverageLimit": 0,
+      "usedRatio": 0
+    },
+    "premium": {
+      "userTokens": 0,
+      "orgTotalTokensUsed": 0,
+      "orgOverageUsed": 0,
+      "basicAllowance": 0,
+      "totalAllowance": 0,
+      "orgOverageLimit": 0,
+      "usedRatio": 0
+    }
+  }
+}
+```
+
+### GET /api/billing/limits
+
+Supplemental billing limits are requested only when subscription usage lacks UI-style limit fields and includes `globalLimit` or `userLimits`.
+
+Observed Pro live response shape on 2026-06-07:
+
+```jsonc
+{
+  "extraUsageAllowed": false,
+  "usesTokenRateLimitsBilling": false,
+  "tokenRateLimitsRolloutEligible": false,
+  "tokenRateLimitsRolloutOptedOut": false
+}
+```
+
+### GET /api/organization/compute-usage
+
+Supplemental managed-computer usage is requested with billing limits. Pro accounts may return HTTP 403 with `Managed computers are not available due to your subscription status`.
+
+## Provider health
+
+Last audited: 2026-06-07.
+
+Live evidence: authenticated Factory Pro account returned subscription usage via GET after POST 405, supplemental billing limits, and managed-compute HTTP 403.
+
+Metric classification:
+
+| Metric | Classification | Evidence |
+|---|---|---|
+| Standard | Required | Present in live Pro response as `usage.standard`; parser returns this line. |
+| Premium | Plan-dependent | Live Pro response had `usage.premium.totalAllowance: 0`; parser returns Premium only when allowance is greater than 0. |
+| Extra Usage | Plan-dependent | Live billing limits had `extraUsageAllowed: false` and no balance field. |
+| 5-hour usage | Plan-dependent | Live billing limits had no token-rate limit windows. |
+| Weekly usage | Plan-dependent | Live billing limits had no token-rate limit windows. |
+| Monthly usage | Plan-dependent | Live billing limits had no token-rate limit windows. |
+| Droid Core | Plan-dependent | Returned only when Droid Core entitlement fields are true. |
+| Managed Computers | Plan-dependent | Live compute endpoint returned subscription-status HTTP 403. |
+
+Audit result: parser matched the observed Pro live shape; no parser code fix was applied.
 
 ### Plan Detection
 

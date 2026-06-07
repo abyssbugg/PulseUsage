@@ -38,6 +38,57 @@
 
 Usage reads `teams.billing_metadata_json` from `warp.sqlite` and uses `tier.name` when present. Current Warp billing may include the plan, base credits, personal/add-on credits, monthly spend limit, and auto-reload values shown in **Settings → Billing and usage**.
 
+## Provider health
+
+Last audited: 2026-06-07.
+
+Live evidence: local Warp Stable plist contained `AIRequestLimitInfo` and `AIRequestQuotaInfoSetting`; `warp.sqlite` contained billing tier metadata with plan `Max`, but no personal/add-on credit balance, monthly spend limit, auto-reload state, or purchased-this-month fields.
+
+Observed live local shape:
+
+```jsonc
+{
+  "AIRequestLimitInfo": {
+    "limit": 18000,
+    "num_requests_used_since_refresh": 1004,
+    "next_refresh_time": "2026-07-04T20:27:42Z",
+    "request_limit_refresh_duration": "Monthly"
+  },
+  "AIRequestQuotaInfoSetting": {
+    "cycle_history": [
+      {
+        "end_date": "2025-07-29T15:24:38.322857Z",
+        "was_quota_exceeded": false
+      }
+    ]
+  },
+  "billing_metadata_json": {
+    "tier": {
+      "name": "Max",
+      "description": "Max tier - Build plan with 18,000 monthly credits.",
+      "warp_ai_policy": {
+        "limit": 18000
+      },
+      "purchase_add_on_credits_policy": {
+        "enabled": true
+      }
+    }
+  }
+}
+```
+
+Metric classification:
+
+| Metric | Classification | Evidence |
+|---|---|---|
+| Base Credits | Required | Present in live plist as `AIRequestLimitInfo`; parser returns this line. |
+| Personal Credits | Optional | Live billing metadata had no `personal_credits` or `add_on_credits` balance fields. |
+| Monthly Spend Limit | Optional | Live billing metadata had no monthly spend limit field. |
+| Auto-reload | Optional | Live billing metadata had no auto-reload state field. |
+| Purchased This Month | Optional | Live billing metadata had no purchased-this-month field. |
+
+Audit result: parser matched the observed live shape; no parser code fix was applied.
+
 ## Notes
 
 - If Warp has not written request-limit data yet, Usage shows `Warp usage data unavailable. Open Warp and try again.`

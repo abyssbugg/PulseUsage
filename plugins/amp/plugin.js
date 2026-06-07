@@ -78,6 +78,13 @@
       var credits = parseMoney(creditsMatch[1])
       if (Number.isFinite(credits)) result.credits = credits
     }
+    if (result.credits === null) {
+      var workspaceCreditsMatch = text.match(/^Workspace .+?: \$([0-9][0-9,]*(?:\.[0-9]+)?) remaining/m)
+      if (workspaceCreditsMatch) {
+        var workspaceCredits = parseMoney(workspaceCreditsMatch[1])
+        if (Number.isFinite(workspaceCredits)) result.credits = workspaceCredits
+      }
+    }
 
     if (result.total === null && result.credits === null) return null
 

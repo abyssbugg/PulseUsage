@@ -116,6 +116,63 @@ describe("warp plugin", () => {
 
   })
 
+  it("handles current live local shape with tier metadata but no add-on balances", async () => {
+    const ctx = makeCtx()
+    setPrefs(ctx, {
+      AIRequestLimitInfo: {
+        embedding_generation_batch_size: 25,
+        is_unlimited: false,
+        is_unlimited_codebase_indices: false,
+        is_unlimited_voice: false,
+        limit: 18000,
+        max_codebase_indices: 5,
+        max_files_per_repo: 1000,
+        next_refresh_time: "2026-07-04T20:27:42Z",
+        num_requests_used_since_refresh: 1004,
+        request_limit_refresh_duration: "Monthly",
+        voice_request_limit: 50,
+        voice_requests_used_since_last_refresh: 0,
+      },
+      AIRequestQuotaInfoSetting: {
+        cycle_history: [
+          { end_date: "2026-05-04T20:27:42Z", was_quota_exceeded: false },
+          { end_date: "2026-06-04T20:27:42Z", was_quota_exceeded: false },
+        ],
+      },
+    })
+    setBilling(ctx, {
+      customer_type: "Individual",
+      delinquency_status: "NoDelinquency",
+      tier: {
+        name: "Max",
+        description: "Max tier - Build plan with 18,000 monthly credits.",
+        warp_ai_policy: {
+          limit: 18000,
+          is_voice_enabled: true,
+        },
+        purchase_add_on_credits_policy: {
+          enabled: true,
+        },
+        usage_based_pricing_policy: {
+          toggleable: false,
+        },
+      },
+    })
+
+    const plugin = await loadPlugin()
+    const result = plugin.probe(ctx)
+
+    expect(result.plan).toBe("Max")
+    expect(result.lines.map((line) => line.label)).toEqual(["Base Credits"])
+    expect(result.lines.find((line) => line.label === "Base Credits")).toMatchObject({
+      type: "progress",
+      used: 1004,
+      limit: 18000,
+      format: { kind: "count", suffix: "credits" },
+      resetsAt: "2026-07-04T20:27:42.000Z",
+    })
+  })
+
   it("parses live plist values when request info is stored as JSON strings", async () => {
     const ctx = makeCtx()
     setPrefs(ctx, {

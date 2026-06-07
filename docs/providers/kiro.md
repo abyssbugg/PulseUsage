@@ -23,6 +23,55 @@ PulseUsage uses Kiro's local normalized usage cache first, enriches it from Kiro
 
 The plan label comes from `subscriptionInfo.subscriptionTitle` when a recent `GetUsageLimits` response is available from logs or the live API.
 
+## Provider health
+
+Last audited: 2026-06-07.
+
+Live evidence: Kiro auth token and profile ARN were present. Local SQLite had a cached `CREDIT` usage breakdown. No recent `q-client.log` usage response was available. The live AWS CodeWhisperer Runtime `getUsageLimits` request returned HTTP 200 with Pro+ subscription metadata, one credit breakdown, overages enabled, expired free-trial info, and no active bonuses.
+
+Observed Pro+ live response shape:
+
+```jsonc
+{
+  "nextDateReset": 1782956800000,
+  "overageConfiguration": {
+    "overageLimit": null,
+    "overageStatus": "ENABLED"
+  },
+  "subscriptionInfo": {
+    "overageCapability": "OVERAGE_CAPABLE",
+    "subscriptionTitle": "KIRO PRO+",
+    "type": "Q_DEVELOPER_STANDALONE_PRO_PLUS"
+  },
+  "usageBreakdownList": [
+    {
+      "resourceType": "CREDIT",
+      "currentUsage": 0,
+      "currentUsageWithPrecision": 0,
+      "usageLimit": 225,
+      "usageLimitWithPrecision": 225,
+      "nextDateReset": 1782956800000,
+      "freeTrialInfo": {
+        "freeTrialStatus": "EXPIRED",
+        "usageLimit": 500,
+        "usageLimitWithPrecision": 500
+      },
+      "bonuses": []
+    }
+  ]
+}
+```
+
+Metric classification:
+
+| Metric | Classification | Evidence |
+| --- | --- | --- |
+| Credits | Required | Present in live Pro+ response as `usageBreakdownList[*].resourceType: CREDIT`; parser returns this line. |
+| Bonus Credits | Optional | Live free trial was `EXPIRED` and `bonuses` was empty, so no active bonus pool exists. |
+| Overages | Plan-dependent | Live Pro+ response included `overageConfiguration.overageStatus: ENABLED`; parser returns this badge when overage metadata is available. |
+
+Audit result: parser matched the observed Pro+ live shape; no parser code fix was applied.
+
 ## Local Sources
 
 ### 1) SQLite usage cache
