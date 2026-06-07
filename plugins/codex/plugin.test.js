@@ -300,6 +300,126 @@ describe("codex plugin", () => {
     expect(credits.limit).toBe(1000)
   })
 
+  it("handles current live Team response shape with no Spark or review limits and local history", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-06-07T12:00:00.000Z"))
+
+    const ctx = makeCtx()
+    ctx.host.fs.writeText("~/.codex/auth.json", JSON.stringify({
+      tokens: { access_token: "token", refresh_token: "refresh", account_id: "acc" },
+      last_refresh: new Date().toISOString(),
+    }))
+    ctx.host.http.request.mockReturnValue({
+      status: 200,
+      headers: {},
+      bodyText: JSON.stringify({
+        account_id: "redacted",
+        additional_rate_limits: null,
+        code_review_rate_limit: null,
+        credits: {
+          approx_cloud_messages: null,
+          approx_local_messages: null,
+          balance: null,
+          has_credits: false,
+          overage_limit_reached: false,
+          unlimited: false,
+        },
+        plan_type: "team",
+        promo: null,
+        rate_limit: {
+          allowed: true,
+          limit_reached: false,
+          primary_window: {
+            limit_window_seconds: 18000,
+            reset_after_seconds: 3600,
+            reset_at: 1780840800,
+            used_percent: 1,
+          },
+          secondary_window: {
+            limit_window_seconds: 604800,
+            reset_after_seconds: 86400,
+            reset_at: 1780927200,
+            used_percent: 2,
+          },
+        },
+        rate_limit_reached_type: null,
+        rate_limit_reset_credits: {
+          available_count: 0,
+        },
+        referral_beacon: null,
+        spend_control: {
+          individual_limit: null,
+          reached: false,
+        },
+      }),
+    })
+    ctx.host.ccusage.query.mockReturnValue({
+      status: "ok",
+      data: {
+        daily: [
+          {
+            date: "2026-06-07",
+            totalTokens: 100,
+            costUSD: 0.5,
+            models: {
+              "gpt-5.5": { totalTokens: 100 },
+            },
+          },
+          {
+            date: "2026-06-06",
+            totalTokens: 50,
+            costUSD: 0.25,
+            models: {
+              "gpt-5.5": { totalTokens: 50 },
+            },
+          },
+          {
+            date: "2026-06-04",
+            totalTokens: 25,
+            costUSD: 0.1,
+            models: {
+              "gpt-5.5": { totalTokens: 25 },
+            },
+          },
+        ],
+      },
+    })
+
+    try {
+      const plugin = await loadPlugin()
+      const result = plugin.probe(ctx)
+
+      expect(result.plan).toBe("Team")
+      expect(result.lines.map((line) => line.label)).toEqual([
+        "Session",
+        "Weekly",
+        "Credits",
+        "Today",
+        "Yesterday",
+        "Last 30 Days",
+        "Usage Trend",
+        "gpt-5.5",
+      ])
+      expect(result.lines.find((line) => line.label === "Session")).toMatchObject({
+        type: "progress",
+        used: 1,
+        limit: 100,
+        format: { kind: "percent" },
+      })
+      expect(result.lines.find((line) => line.label === "Credits")).toMatchObject({
+        type: "progress",
+        used: 1000,
+        limit: 1000,
+        format: { kind: "count", suffix: "credits" },
+      })
+      expect(result.lines.find((line) => line.label === "Spark")).toBeUndefined()
+      expect(result.lines.find((line) => line.label === "Spark Weekly")).toBeUndefined()
+      expect(result.lines.find((line) => line.label === "Reviews")).toBeUndefined()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("refreshes keychain auth and writes back to keychain", async () => {
     const ctx = makeCtx()
     ctx.host.keychain.readGenericPassword.mockReturnValue(JSON.stringify({

@@ -27,6 +27,65 @@
 
 **Team detection**: an account is treated as "team" when `planName` is `"Team"`, or `spendLimitUsage.limitType` is `"team"`, or `spendLimitUsage.pooledLimit` is greater than `0`. Team accounts display Total usage in dollars; individual accounts display it as a percentage.
 
+## Provider health
+
+Last audited: 2026-06-07.
+
+Live evidence: Cursor Desktop SQLite contained valid access and refresh tokens. `GetCurrentPeriodUsage`, `GetPlanInfo`, and `GetCreditGrantsBalance` returned HTTP 200. The `cursor.com` Stripe and REST usage endpoints timed out during capture, which only affects optional credit/request fallback rows.
+
+Observed Free live response shape (key parser fields):
+
+The live payload also included display messages and model bucket metadata that are not consumed by the parser.
+
+```jsonc
+{
+  "GetCurrentPeriodUsage": {
+    "billingCycleStart": "1780010628089",
+    "billingCycleEnd": "1782689028089",
+    "planUsage": {
+      "apiPercentUsed": 0,
+      "autoPercentUsed": 0,
+      "remainingBonus": false,
+      "totalPercentUsed": 0
+    },
+    "spendLimitUsage": {
+      "individualLimit": 0,
+      "limitType": "user",
+      "overallLimit": 0,
+      "overallRemaining": 0,
+      "pooledLimit": 0,
+      "pooledRemaining": 0
+    }
+  },
+  "GetPlanInfo": {
+    "planInfo": {
+      "planName": "Free",
+      "price": "Free",
+      "billingCycleEnd": "1782689028089"
+    },
+    "nextUpgrade": {
+      "name": "Pro+",
+      "price": "$60/mo",
+      "tier": "pro_plus"
+    }
+  },
+  "GetCreditGrantsBalance": {}
+}
+```
+
+Metric classification:
+
+| Metric | Classification | Evidence |
+|---|---|---|
+| Total usage | Required | Present in live Free response as `planUsage.totalPercentUsed`; parser returns this line. |
+| Auto usage | Optional | Present in live Free response when `planUsage.autoPercentUsed` is finite; omitted if absent. |
+| API usage | Optional | Present in live Free response when `planUsage.apiPercentUsed` is finite; omitted if absent. |
+| Credits | Optional | Live credit grants response was empty; Stripe balance endpoint timed out, so no credit balance was available. |
+| Requests | Plan-dependent | Only returned for Enterprise/Team request-based accounts via `/api/usage`. |
+| On-demand | Plan-dependent | Live Free response had zero individual and pooled limits; parser returns this only when a limit is greater than 0. |
+
+Audit result: parser matched the observed Free live shape; no parser code fix was applied.
+
 ## Endpoints
 
 ### POST /aiserver.v1.DashboardService/GetCurrentPeriodUsage

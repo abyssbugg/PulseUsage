@@ -233,6 +233,83 @@ describe("kiro plugin", () => {
     expect(savedToken.refreshToken).toBe("refreshed-refresh-token")
   })
 
+  it("handles current live Pro+ response shape with expired free trial and enabled overages", async () => {
+    const ctx = makeCtx()
+    writeToken(ctx)
+    writeProfile(ctx)
+
+    ctx.host.http.request.mockReturnValue({
+      status: 200,
+      headers: {},
+      bodyText: JSON.stringify({
+        daysUntilReset: 24,
+        limits: [],
+        nextDateReset: 1782956800000,
+        overageConfiguration: {
+          overageLimit: null,
+          overageStatus: "ENABLED",
+        },
+        subscriptionInfo: {
+          overageCapability: "OVERAGE_CAPABLE",
+          subscriptionManagementTarget: "MANAGE",
+          subscriptionTitle: "KIRO PRO+",
+          type: "Q_DEVELOPER_STANDALONE_PRO_PLUS",
+          upgradeCapability: "UPGRADE_CAPABLE",
+        },
+        totalUsage: null,
+        usageBreakdown: null,
+        usageBreakdownList: [
+          {
+            bonuses: [],
+            currency: "USD",
+            currentOverages: 0,
+            currentOveragesWithPrecision: 0,
+            currentUsage: 0,
+            currentUsageWithPrecision: 0,
+            displayName: "Credit",
+            displayNamePlural: "Credits",
+            freeTrialInfo: {
+              currentUsage: 0,
+              currentUsageWithPrecision: 0,
+              freeTrialExpiry: 1775500185544,
+              freeTrialStatus: "EXPIRED",
+              usageLimit: 500,
+              usageLimitWithPrecision: 500,
+            },
+            nextDateReset: 1782956800000,
+            overageCap: 0,
+            overageCapWithPrecision: 0,
+            overageCharges: 0,
+            overageCredits: null,
+            overageRate: 0,
+            resourceType: "CREDIT",
+            unit: "INVOCATIONS",
+            usageLimit: 225,
+            usageLimitWithPrecision: 225,
+          },
+        ],
+      }),
+    })
+
+    const plugin = await loadPlugin()
+    const result = plugin.probe(ctx)
+
+    expect(result.plan).toBe("Kiro Pro+")
+    expect(result.lines.map((line) => line.label)).toEqual(["Credits", "Overages"])
+    expect(result.lines.find((line) => line.label === "Credits")).toMatchObject({
+      type: "progress",
+      used: 0,
+      limit: 225,
+      format: { kind: "count", suffix: "credits" },
+      resetsAt: "2026-07-02T01:46:40.000Z",
+    })
+    expect(result.lines.find((line) => line.label === "Bonus Credits")).toBeUndefined()
+    expect(result.lines.find((line) => line.label === "Overages")).toMatchObject({
+      type: "badge",
+      text: "Enabled",
+    })
+  })
+
   it("adds TokenType for external IdP live requests", async () => {
     const ctx = makeCtx()
     writeToken(ctx, makeToken({

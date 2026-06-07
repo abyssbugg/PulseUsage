@@ -319,6 +319,20 @@ describe("amp plugin", () => {
     expect(result.lines[0].value).toBe("$5.00")
   })
 
+  it("parses workspace credits-only live response text", async () => {
+    var ctx = makeCtx()
+    writeSecrets(ctx)
+    var text = "Signed in as person@example.com (exampleuser)\n"
+      + "Workspace sample: $3.88 remaining (replenishes automatically) - https://ampcode.com/workspaces/sample"
+    ctx.host.http.request.mockReturnValue(balanceResponse(text))
+    var plugin = await loadPlugin()
+    var result = plugin.probe(ctx)
+    expect(result.plan).toBe("Credits")
+    expect(result.lines.length).toBe(1)
+    expect(result.lines[0].label).toBe("Credits")
+    expect(result.lines[0].value).toBe("$3.88")
+  })
+
   it("shows both free tier and credits when both present", async () => {
     var ctx = makeCtx()
     writeSecrets(ctx)

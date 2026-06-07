@@ -1138,6 +1138,98 @@ describe("factory plugin", () => {
     expect(usageCalls[1].method).toBe("GET")
     expect(usageCalls[1].headers.Authorization).toContain("Bearer ")
   })
+  it("handles current live Pro response shape with GET fallback and unavailable optional metrics", async () => {
+    const ctx = makeCtx()
+    const futureExp = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60
+    ctx.host.fs.writeText("~/.factory/auth.json", JSON.stringify({
+      access_token: makeJwt({ exp: futureExp, sub: "user_live_shape" }),
+      refresh_token: "refresh",
+    }))
+
+    const subscriptionUsage = {
+      cacheUpdated: false,
+      source: "cache",
+      userId: "redacted",
+      globalLimit: {},
+      userLimits: {},
+      usage: {
+        startDate: 1770623326000,
+        endDate: 1772956800000,
+        standard: {
+          userTokens: 0,
+          orgTotalTokensUsed: 0,
+          orgOverageUsed: 0,
+          basicAllowance: 20000000,
+          totalAllowance: 20000000,
+          orgOverageLimit: 0,
+          usedRatio: 0,
+        },
+        premium: {
+          userTokens: 0,
+          orgTotalTokensUsed: 0,
+          orgOverageUsed: 0,
+          basicAllowance: 0,
+          totalAllowance: 0,
+          orgOverageLimit: 0,
+          usedRatio: 0,
+        },
+      },
+    }
+
+    const calls = []
+    ctx.host.http.request.mockImplementation((opts) => {
+      calls.push(opts)
+      const url = String(opts.url)
+      if (opts.method === "POST" && url === "https://api.factory.ai/api/organization/subscription/usage") {
+        return { status: 405, headers: {}, bodyText: "" }
+      }
+      if (opts.method === "GET" && url.startsWith("https://api.factory.ai/api/organization/subscription/usage?")) {
+        return { status: 200, headers: {}, bodyText: JSON.stringify(subscriptionUsage) }
+      }
+      if (url === "https://api.factory.ai/api/billing/limits") {
+        return {
+          status: 200,
+          headers: {},
+          bodyText: JSON.stringify({
+            extraUsageAllowed: false,
+            usesTokenRateLimitsBilling: false,
+            tokenRateLimitsRolloutEligible: false,
+            tokenRateLimitsRolloutOptedOut: false,
+          }),
+        }
+      }
+      if (url === "https://api.factory.ai/api/organization/compute-usage") {
+        return {
+          status: 403,
+          headers: {},
+          bodyText: JSON.stringify({
+            status: 403,
+            title: "Forbidden",
+            detail: "Managed computers are not available due to your subscription status",
+            requestId: "redacted",
+          }),
+        }
+      }
+      throw new Error(`unexpected URL: ${url}`)
+    })
+
+    const plugin = await loadPlugin()
+    const result = plugin.probe(ctx)
+
+    expect(result.plan).toBe("Pro")
+    expect(result.lines.map((line) => line.label)).toEqual(["Standard"])
+    expect(result.lines.find((line) => line.label === "Standard")).toMatchObject({
+      type: "progress",
+      used: 0,
+      limit: 20000000,
+    })
+    expect(calls.map((call) => [call.method, String(call.url).split("?")[0]])).toEqual([
+      ["POST", "https://api.factory.ai/api/organization/subscription/usage"],
+      ["GET", "https://api.factory.ai/api/organization/subscription/usage"],
+      ["GET", "https://api.factory.ai/api/billing/limits"],
+      ["GET", "https://api.factory.ai/api/organization/compute-usage"],
+    ])
+  })
 
   it("infers Basic plan from low allowance", async () => {
     const ctx = makeCtx()
