@@ -18,7 +18,7 @@
 ### POST /api/organization/subscription/usage
 Returns Factory subscription usage. Current responses expose UI-style limits; older responses expose raw token allowances.
 
-If this endpoint returns HTTP 405 for POST, the plugin retries with GET using `useCache=true` and the JWT user ID as query parameters.
+If this endpoint returns HTTP 405 for POST, the plugin retries with GET using `useCache=true` and, when decoded from the JWT, `userId` as query parameters.
 
 #### Headers
 

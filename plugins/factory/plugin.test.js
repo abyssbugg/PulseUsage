@@ -1223,12 +1223,18 @@ describe("factory plugin", () => {
       used: 0,
       limit: 20000000,
     })
-    expect(calls.map((call) => [call.method, String(call.url).split("?")[0]])).toEqual([
+    expect(calls.map((call) => {
+      const url = new URL(String(call.url))
+      return [call.method, `${url.origin}${url.pathname}`]
+    })).toEqual([
       ["POST", "https://api.factory.ai/api/organization/subscription/usage"],
       ["GET", "https://api.factory.ai/api/organization/subscription/usage"],
       ["GET", "https://api.factory.ai/api/billing/limits"],
       ["GET", "https://api.factory.ai/api/organization/compute-usage"],
     ])
+    const fallbackUrl = new URL(String(calls[1].url))
+    expect(fallbackUrl.searchParams.get("useCache")).toBe("true")
+    expect(fallbackUrl.searchParams.get("userId")).toBe("user_live_shape")
   })
 
   it("infers Basic plan from low allowance", async () => {

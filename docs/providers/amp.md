@@ -50,7 +50,7 @@ Signed in as <user>
 Individual credits: $<credits> remaining - https://ampcode.com/settings
 ```
 **Workspace credits only:**
-```
+```text
 Signed in as <user>
 Workspace <name>: $<credits> remaining (replenishes automatically) - https://ampcode.com/workspaces/<name>
 ```
