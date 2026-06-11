@@ -53,6 +53,14 @@ Bars show observed local spend as a percentage of those fixed limits and clamp a
 
 Monthly usage is inferred from local history, not read from OpenCode’s account API. PulseUsage reuses the earliest observed local OpenCode Go usage timestamp as the monthly anchor. If no local history exists yet, it falls back to UTC calendar month boundaries until the first Go usage is recorded.
 
+## Metric classification
+
+| Metric | Classification | Evidence |
+|---|---|---|
+| Session | Required | Provider docs define the rolling 5h window; tests cover zero and history-backed values. |
+| Weekly | Required | Provider docs define the weekly window; tests cover UTC weekly aggregation. |
+| Monthly | Required | Provider docs define the monthly window; tests cover monthly anchor behavior. |
+
 ## Failure Behavior
 
 If auth or prior history already indicates OpenCode Go is in use, but SQLite becomes unreadable or malformed, the provider stays visible and shows a grey `Status: No usage data` badge instead of failing hard.

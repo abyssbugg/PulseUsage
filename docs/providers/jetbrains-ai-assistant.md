@@ -38,6 +38,14 @@ From nested quota buckets:
 | Used      | Detail   | Used quota amount |
 | Remaining | Detail   | Remaining quota |
 
+## Metric classification
+
+| Metric | Classification | Evidence |
+|---|---|---|
+| Quota | Required | Provider docs map `quotaInfo.current` and `maximum`; tests cover valid quota XML. |
+| Used | Required | Provider docs expose used quota; tests cover raw and normalized used values. |
+| Remaining | Required | Provider docs expose remaining quota; tests cover explicit and computed remaining values. |
+
 ## Errors
 
 | Condition | Message |

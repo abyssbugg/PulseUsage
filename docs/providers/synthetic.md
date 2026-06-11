@@ -155,6 +155,17 @@ Progress lines include:
 - Subscription / Free Tool Calls: `resetsAt` from `renewsAt`
 - Search: `resetsAt` from `renewsAt` and `periodDurationMs = 3600000`
 
+## Metric classification
+
+| Metric | Classification | Evidence |
+|---|---|---|
+| 5h Rate Limit | Optional | Provider docs and tests show it only when `rollingFiveHourLimit` is usable. |
+| Mana Bar | Optional | Provider docs and tests show it only when `weeklyTokenLimit` is usable. |
+| Rate Limited | Optional | Provider docs and tests show it only when `rollingFiveHourLimit.limited` is true. |
+| Subscription | Deprecated | Provider docs and tests mark it as legacy fallback when newer quota blocks are unavailable. |
+| Free Tool Calls | Deprecated | Provider docs and tests mark it as legacy fallback when newer quota blocks are unavailable. |
+| Search | Optional | Provider docs and tests show it only when hourly search quota exists. |
+
 ## Errors
 
 | Condition              | Message                                                                   |
