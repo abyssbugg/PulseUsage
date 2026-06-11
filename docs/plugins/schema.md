@@ -50,9 +50,9 @@ Bundled plugins live under `src-tauri/resources/bundled_plugins/<id>/`.
   "icon": "icon.svg",
   "links": [{ "label": "Status", "url": "https://status.example.com" }],
   "lines": [
-    { "type": "badge", "label": "Plan", "scope": "overview" },
-    { "type": "progress", "label": "Usage", "scope": "overview", "primary": true },
-    { "type": "text", "label": "Details", "scope": "detail" }
+    { "type": "badge", "label": "Plan", "scope": "overview", "classification": "optional" },
+    { "type": "progress", "label": "Usage", "scope": "overview", "classification": "required", "primaryOrder": 1 },
+    { "type": "text", "label": "Details", "scope": "detail", "classification": "optional" }
   ]
 }
 ```
@@ -95,18 +95,29 @@ loading skeletons instantly while probes execute asynchronously.
 | `type`    | string  | Yes      | One of: `text`, `progress`, `badge`, `barChart`   |
 | `label`   | string  | Yes      | Static label shown in the UI for this line        |
 | `scope`   | string  | Yes      | `"overview"` or `"detail"` - where line appears   |
-| `primary` | boolean | No       | If `true`, this progress line appears in tray icon |
+| `classification` | string | No | Metric stability class: `required`, `optional`, `planDependent`, or `deprecated` |
+| `primaryOrder` | number | No | Lower number = higher tray priority for progress lines |
 
 - `"overview"` - shown on both Overview tab and plugin detail pages
 - `"detail"` - shown only on plugin detail pages
 
+### Metric Classification
+
+`classification` is machine-readable provider health metadata. It does not change runtime behavior.
+
+- `required` - expected for a healthy provider shape and must stay fixture-covered.
+- `optional` - emitted only when optional data exists; absence is not a provider failure.
+- `planDependent` - emitted only for certain tiers, entitlements, model sets, or provider modes.
+- `deprecated` - legacy fallback retained for compatibility.
+- Missing classification means blocked/unverified; do not guess.
+
 ### Primary Progress (Tray Icon)
 
-Plugins can optionally mark one progress line as `primary: true`. This progress metric will be displayed as a horizontal bar in the system tray icon, allowing users to see usage at a glance without opening the app.
+Plugins can optionally mark progress lines with `primaryOrder`. These progress metrics are candidates for the system tray icon, allowing users to see usage at a glance without opening the app.
 
 Rules:
-- Only `type: "progress"` lines can be primary (the flag is ignored on other types)
-- Only the **first** `primary: true` line is used (subsequent ones are ignored)
+- Only `type: "progress"` lines can have `primaryOrder` (ignored on other types)
+- Lower `primaryOrder` values are tried first
 - Up to 4 enabled plugins with primary progress are shown in the tray (in plugin order)
 - If no data is available yet, the bar shows as a track without fill
 
@@ -115,10 +126,10 @@ Example:
 ```json
 {
   "lines": [
-    { "type": "badge", "label": "Plan", "scope": "overview" },
-    { "type": "progress", "label": "Plan usage", "scope": "overview", "primary": true },
-    { "type": "progress", "label": "Extra", "scope": "detail" },
-    { "type": "text", "label": "Resets", "scope": "detail" }
+    { "type": "badge", "label": "Plan", "scope": "overview", "classification": "optional" },
+    { "type": "progress", "label": "Plan usage", "scope": "overview", "classification": "required", "primaryOrder": 1 },
+    { "type": "progress", "label": "Extra", "scope": "detail", "classification": "optional" },
+    { "type": "text", "label": "Resets", "scope": "detail", "classification": "optional" }
   ]
 }
 ```

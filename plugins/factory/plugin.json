@@ -7,13 +7,13 @@
   "icon": "icon.svg",
   "brandColor": "#020202",
   "lines": [
-    { "type": "text", "label": "Extra Usage", "scope": "overview" },
-    { "type": "progress", "label": "5-hour usage", "scope": "overview", "primaryOrder": 1 },
-    { "type": "progress", "label": "Weekly usage", "scope": "detail" },
-    { "type": "progress", "label": "Monthly usage", "scope": "detail" },
-    { "type": "badge", "label": "Droid Core", "scope": "detail" },
-    { "type": "progress", "label": "Managed Computers", "scope": "detail" },
-    { "type": "progress", "label": "Standard", "scope": "overview", "primaryOrder": 2 },
-    { "type": "progress", "label": "Premium", "scope": "detail" }
+    { "type": "text", "label": "Extra Usage", "scope": "overview", "classification": "planDependent" },
+    { "type": "progress", "label": "5-hour usage", "scope": "overview", "classification": "planDependent", "primaryOrder": 1 },
+    { "type": "progress", "label": "Weekly usage", "scope": "detail", "classification": "planDependent" },
+    { "type": "progress", "label": "Monthly usage", "scope": "detail", "classification": "planDependent" },
+    { "type": "badge", "label": "Droid Core", "scope": "detail", "classification": "planDependent" },
+    { "type": "progress", "label": "Managed Computers", "scope": "detail", "classification": "planDependent" },
+    { "type": "progress", "label": "Standard", "scope": "overview", "classification": "required", "primaryOrder": 2 },
+    { "type": "progress", "label": "Premium", "scope": "detail", "classification": "planDependent" }
   ]
 }

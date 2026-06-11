@@ -11,11 +11,11 @@
     { "label": "Dashboard", "url": "https://www.cursor.com/dashboard" }
   ],
   "lines": [
-    { "type": "progress", "label": "Credits", "scope": "overview", "primaryOrder": 1 },
-    { "type": "progress", "label": "Total usage", "scope": "overview", "primaryOrder": 2 },
-    { "type": "progress", "label": "Requests", "scope": "overview", "primaryOrder": 3 },
-    { "type": "progress", "label": "Auto usage", "scope": "detail" },
-    { "type": "progress", "label": "API usage", "scope": "detail" },
-    { "type": "progress", "label": "On-demand", "scope": "detail" }
+    { "type": "progress", "label": "Credits", "scope": "overview", "classification": "optional", "primaryOrder": 1 },
+    { "type": "progress", "label": "Total usage", "scope": "overview", "classification": "required", "primaryOrder": 2 },
+    { "type": "progress", "label": "Requests", "scope": "overview", "classification": "planDependent", "primaryOrder": 3 },
+    { "type": "progress", "label": "Auto usage", "scope": "detail", "classification": "optional" },
+    { "type": "progress", "label": "API usage", "scope": "detail", "classification": "optional" },
+    { "type": "progress", "label": "On-demand", "scope": "detail", "classification": "planDependent" }
   ]
 }
