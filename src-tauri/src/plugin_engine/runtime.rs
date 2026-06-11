@@ -1,3 +1,9 @@
+use crate::plugin_engine::diagnostics::{
+    AuthDetected, DataSourceReachability, DiagnosticsHealth, DiagnosticsLikelyCause,
+    ManifestMetricDiagnostic, MetricClassification, ParserExecutionStatus,
+    ProbeDiagnosticsRecorder, ProviderDiagnostics, ReturnedMetricDiagnostic, SafeHostFacts,
+    normalize_metric_classification, redact_diagnostic_text,
+};
 use crate::plugin_engine::host_api;
 use crate::plugin_engine::manifest::LoadedPlugin;
 use rquickjs::{Array, Context, Ctx, Error, Object, Promise, Runtime, Value};
@@ -67,6 +73,7 @@ pub struct PluginOutput {
     pub plan: Option<String>,
     pub lines: Vec<MetricLine>,
     pub icon_url: String,
+    pub diagnostics: ProviderDiagnostics,
 }
 
 pub fn run_probe(plugin: &LoadedPlugin, app_data_dir: &PathBuf, app_version: &str) -> PluginOutput {
@@ -84,7 +91,12 @@ fn run_probe_with_timeout(
     app_version: &str,
     timeout: Duration,
 ) -> PluginOutput {
-    let fallback = error_output(plugin, "runtime error".to_string());
+    let diagnostics_recorder = ProbeDiagnosticsRecorder::default();
+    let fallback = error_output_with_facts(
+        plugin,
+        "runtime error".to_string(),
+        diagnostics_recorder.snapshot(),
+    );
     let timeout_message = probe_timeout_message(timeout);
     let deadline_at = Instant::now()
         .checked_add(timeout)
@@ -115,55 +127,116 @@ fn run_probe_with_timeout(
             &app_data,
             app_version,
             deadline,
+            diagnostics_recorder.clone(),
         )
         .is_err()
         {
             if deadline.has_elapsed() {
-                return error_output(plugin, timeout_message.clone());
+                return error_output_with_facts(
+                    plugin,
+                    timeout_message.clone(),
+                    diagnostics_recorder.snapshot(),
+                );
             }
-            return error_output(plugin, "host api injection failed".to_string());
+            return error_output_with_facts(
+                plugin,
+                "host api injection failed".to_string(),
+                diagnostics_recorder.snapshot(),
+            );
         }
         if host_api::patch_http_wrapper(&ctx).is_err() {
             if deadline.has_elapsed() {
-                return error_output(plugin, timeout_message.clone());
+                return error_output_with_facts(
+                    plugin,
+                    timeout_message.clone(),
+                    diagnostics_recorder.snapshot(),
+                );
             }
-            return error_output(plugin, "http wrapper patch failed".to_string());
+            return error_output_with_facts(
+                plugin,
+                "http wrapper patch failed".to_string(),
+                diagnostics_recorder.snapshot(),
+            );
         }
         if host_api::patch_ls_wrapper(&ctx).is_err() {
             if deadline.has_elapsed() {
-                return error_output(plugin, timeout_message.clone());
+                return error_output_with_facts(
+                    plugin,
+                    timeout_message.clone(),
+                    diagnostics_recorder.snapshot(),
+                );
             }
-            return error_output(plugin, "ls wrapper patch failed".to_string());
+            return error_output_with_facts(
+                plugin,
+                "ls wrapper patch failed".to_string(),
+                diagnostics_recorder.snapshot(),
+            );
         }
         if host_api::patch_ccusage_wrapper(&ctx).is_err() {
             if deadline.has_elapsed() {
-                return error_output(plugin, timeout_message.clone());
+                return error_output_with_facts(
+                    plugin,
+                    timeout_message.clone(),
+                    diagnostics_recorder.snapshot(),
+                );
             }
-            return error_output(plugin, "ccusage wrapper patch failed".to_string());
+            return error_output_with_facts(
+                plugin,
+                "ccusage wrapper patch failed".to_string(),
+                diagnostics_recorder.snapshot(),
+            );
         }
         if host_api::inject_utils(&ctx).is_err() {
             if deadline.has_elapsed() {
-                return error_output(plugin, timeout_message.clone());
+                return error_output_with_facts(
+                    plugin,
+                    timeout_message.clone(),
+                    diagnostics_recorder.snapshot(),
+                );
             }
-            return error_output(plugin, "utils injection failed".to_string());
+            return error_output_with_facts(
+                plugin,
+                "utils injection failed".to_string(),
+                diagnostics_recorder.snapshot(),
+            );
         }
 
         if ctx.eval::<(), _>(entry_script.as_bytes()).is_err() {
             if deadline.has_elapsed() {
-                return error_output(plugin, timeout_message.clone());
+                return error_output_with_facts(
+                    plugin,
+                    timeout_message.clone(),
+                    diagnostics_recorder.snapshot(),
+                );
             }
-            return error_output(plugin, "script eval failed".to_string());
+            return error_output_with_facts(
+                plugin,
+                "script eval failed".to_string(),
+                diagnostics_recorder.snapshot(),
+            );
         }
 
         let globals = ctx.globals();
         let plugin_obj: Object = match globals.get("__pulseusage_plugin") {
             Ok(obj) => obj,
-            Err(_) => return error_output(plugin, "missing __pulseusage_plugin".to_string()),
+            Err(_) => {
+                return error_output_with_facts(
+                    plugin,
+                    "missing __pulseusage_plugin".to_string(),
+                    diagnostics_recorder.snapshot(),
+                );
+            }
         };
 
         let probe_fn: rquickjs::Function = match plugin_obj.get("probe") {
             Ok(f) => f,
-            Err(_) => return error_output(plugin, "missing probe()".to_string()),
+            Err(_) => {
+                return error_output_with_facts(
+                    plugin,
+                    "missing probe()".to_string(),
+                    diagnostics_recorder.snapshot(),
+                );
+            }
         };
 
         let probe_ctx: Value = globals
@@ -174,41 +247,79 @@ fn run_probe_with_timeout(
             Ok(r) => r,
             Err(_) => {
                 if deadline.has_elapsed() {
-                    return error_output(plugin, timeout_message.clone());
+                    return error_output_with_facts(
+                        plugin,
+                        timeout_message.clone(),
+                        diagnostics_recorder.snapshot(),
+                    );
                 }
-                return error_output(plugin, extract_error_string(&ctx));
+                return error_output_with_facts(
+                    plugin,
+                    extract_error_string(&ctx),
+                    diagnostics_recorder.snapshot(),
+                );
             }
         };
         if deadline.has_elapsed() {
-            return error_output(plugin, timeout_message.clone());
+            return error_output_with_facts(
+                plugin,
+                timeout_message.clone(),
+                diagnostics_recorder.snapshot(),
+            );
         }
         let result: Object = if result_value.is_promise() {
             let promise: Promise = match result_value.into_promise() {
                 Some(promise) => promise,
                 None => {
-                    return error_output(plugin, "probe() returned invalid promise".to_string());
+                    return error_output_with_facts(
+                        plugin,
+                        "probe() returned invalid promise".to_string(),
+                        diagnostics_recorder.snapshot(),
+                    );
                 }
             };
             match promise.finish::<Object>() {
                 Ok(obj) => obj,
                 Err(Error::WouldBlock) => {
-                    return error_output(plugin, "probe() returned unresolved promise".to_string());
+                    return error_output_with_facts(
+                        plugin,
+                        "probe() returned unresolved promise".to_string(),
+                        diagnostics_recorder.snapshot(),
+                    );
                 }
                 Err(_) => {
                     if deadline.has_elapsed() {
-                        return error_output(plugin, timeout_message.clone());
+                        return error_output_with_facts(
+                            plugin,
+                            timeout_message.clone(),
+                            diagnostics_recorder.snapshot(),
+                        );
                     }
-                    return error_output(plugin, extract_error_string(&ctx));
+                    return error_output_with_facts(
+                        plugin,
+                        extract_error_string(&ctx),
+                        diagnostics_recorder.snapshot(),
+                    );
                 }
             }
         } else {
             match result_value.into_object() {
                 Some(obj) => obj,
-                None => return error_output(plugin, "probe() returned non-object".to_string()),
+                None => {
+                    return error_output_with_facts(
+                        plugin,
+                        "probe() returned non-object".to_string(),
+                        diagnostics_recorder.snapshot(),
+                    );
+                }
             }
         };
         if deadline.has_elapsed() {
-            return error_output(plugin, timeout_message.clone());
+            return error_output_with_facts(
+                plugin,
+                timeout_message.clone(),
+                diagnostics_recorder.snapshot(),
+            );
         }
 
         let plan: Option<String> = result
@@ -226,6 +337,7 @@ fn run_probe_with_timeout(
             provider_id: plugin_id,
             display_name,
             plan,
+            diagnostics: build_diagnostics(plugin, &lines, diagnostics_recorder.snapshot()),
             lines,
             icon_url,
         }
@@ -637,7 +749,10 @@ fn parse_bar_chart_line<'js>(
     }
 
     if points.is_empty() {
-        errors.push(format!("barChart line at index {} has no valid points", idx));
+        errors.push(format!(
+            "barChart line at index {} has no valid points",
+            idx
+        ));
         return (None, errors);
     }
 
@@ -672,13 +787,226 @@ fn parse_bar_chart_line<'js>(
     )
 }
 
-fn error_output(plugin: &LoadedPlugin, message: String) -> PluginOutput {
+fn error_output_with_facts(
+    plugin: &LoadedPlugin,
+    message: String,
+    host_facts: SafeHostFacts,
+) -> PluginOutput {
+    let lines = vec![error_line(message)];
     PluginOutput {
         provider_id: plugin.manifest.id.clone(),
         display_name: plugin.manifest.name.clone(),
         plan: None,
-        lines: vec![error_line(message)],
+        diagnostics: build_diagnostics(plugin, &lines, host_facts),
+        lines,
         icon_url: plugin.icon_data_url.clone(),
+    }
+}
+
+fn build_diagnostics(
+    plugin: &LoadedPlugin,
+    lines: &[MetricLine],
+    host_facts: SafeHostFacts,
+) -> ProviderDiagnostics {
+    let manifest_metrics: Vec<ManifestMetricDiagnostic> = plugin
+        .manifest
+        .lines
+        .iter()
+        .map(|line| ManifestMetricDiagnostic {
+            label: line.label.clone(),
+            line_type: line.line_type.clone(),
+            scope: line.scope.clone(),
+            classification: normalize_metric_classification(line.classification.as_deref()),
+        })
+        .collect();
+    let returned_metrics: Vec<ReturnedMetricDiagnostic> = lines
+        .iter()
+        .filter(|line| !is_error_line(line))
+        .map(|line| ReturnedMetricDiagnostic {
+            label: metric_line_label(line).to_string(),
+            line_type: metric_line_type(line).to_string(),
+        })
+        .collect();
+    let returned_labels: std::collections::HashSet<&str> = returned_metrics
+        .iter()
+        .map(|line| line.label.as_str())
+        .collect();
+    let missing_metrics: Vec<ManifestMetricDiagnostic> = manifest_metrics
+        .iter()
+        .filter(|line| !returned_labels.contains(line.label.as_str()))
+        .cloned()
+        .collect();
+    let last_error = last_error_from_lines(lines).map(|message| redact_diagnostic_text(&message));
+    let parser_execution_status = if last_error.is_some() {
+        ParserExecutionStatus::Failed
+    } else {
+        ParserExecutionStatus::Success
+    };
+    let auth_detected = derive_auth_detected(&host_facts);
+    let data_source_reachable = derive_data_source_reachable(&host_facts);
+    let likely_causes = derive_likely_causes(
+        parser_execution_status,
+        last_error.as_deref(),
+        &host_facts,
+        data_source_reachable,
+        &missing_metrics,
+        &returned_metrics,
+    );
+    let health_summary =
+        derive_health_summary(parser_execution_status, &host_facts, &missing_metrics);
+
+    ProviderDiagnostics {
+        provider_loaded: true,
+        provider_version: Some(plugin.manifest.version.clone()),
+        auth_detected,
+        data_source_reachable,
+        last_successful_refresh_at: None,
+        manifest_metrics,
+        returned_metrics,
+        missing_metrics,
+        last_error,
+        parser_execution_status,
+        health_summary,
+        likely_causes,
+        host_facts,
+    }
+}
+
+fn metric_line_label(line: &MetricLine) -> &str {
+    match line {
+        MetricLine::Text { label, .. }
+        | MetricLine::Progress { label, .. }
+        | MetricLine::Badge { label, .. }
+        | MetricLine::BarChart { label, .. } => label,
+    }
+}
+
+fn metric_line_type(line: &MetricLine) -> &'static str {
+    match line {
+        MetricLine::Text { .. } => "text",
+        MetricLine::Progress { .. } => "progress",
+        MetricLine::Badge { .. } => "badge",
+        MetricLine::BarChart { .. } => "barChart",
+    }
+}
+
+fn is_error_line(line: &MetricLine) -> bool {
+    matches!(line, MetricLine::Badge { label, .. } if label == "Error")
+}
+
+fn last_error_from_lines(lines: &[MetricLine]) -> Option<String> {
+    if lines.len() != 1 {
+        return None;
+    }
+    match lines.first() {
+        Some(MetricLine::Badge { label, text, .. }) if label == "Error" => {
+            Some(if text.trim().is_empty() {
+                "Couldn't update data. Try again?".to_string()
+            } else {
+                text.clone()
+            })
+        }
+        _ => None,
+    }
+}
+
+fn derive_auth_detected(host_facts: &SafeHostFacts) -> AuthDetected {
+    if host_facts.auth_read_successes > 0 {
+        AuthDetected::Detected
+    } else if host_facts.auth_read_attempts > 0 {
+        AuthDetected::NotDetected
+    } else {
+        AuthDetected::Unknown
+    }
+}
+
+fn derive_data_source_reachable(host_facts: &SafeHostFacts) -> DataSourceReachability {
+    if host_facts.http_2xx_responses_seen > 0
+        || (host_facts.local_reads_attempted > 0
+            && host_facts.local_read_failures < host_facts.local_reads_attempted)
+    {
+        DataSourceReachability::Reachable
+    } else if host_facts.http_requests_attempted > 0 || host_facts.local_reads_attempted > 0 {
+        DataSourceReachability::Unreachable
+    } else {
+        DataSourceReachability::Unknown
+    }
+}
+
+fn derive_health_summary(
+    parser_execution_status: ParserExecutionStatus,
+    host_facts: &SafeHostFacts,
+    missing_metrics: &[ManifestMetricDiagnostic],
+) -> DiagnosticsHealth {
+    if parser_execution_status == ParserExecutionStatus::Failed {
+        return DiagnosticsHealth::Error;
+    }
+    if host_facts.auth_status_responses_seen > 0
+        || missing_metrics
+            .iter()
+            .any(|metric| metric.classification == MetricClassification::Required)
+    {
+        return DiagnosticsHealth::Warning;
+    }
+    DiagnosticsHealth::Ok
+}
+
+fn derive_likely_causes(
+    parser_execution_status: ParserExecutionStatus,
+    last_error: Option<&str>,
+    host_facts: &SafeHostFacts,
+    data_source_reachable: DataSourceReachability,
+    missing_metrics: &[ManifestMetricDiagnostic],
+    returned_metrics: &[ReturnedMetricDiagnostic],
+) -> Vec<DiagnosticsLikelyCause> {
+    let mut causes = Vec::new();
+    push_cause_if(
+        &mut causes,
+        parser_execution_status == ParserExecutionStatus::Failed,
+        DiagnosticsLikelyCause::ParserError,
+    );
+    push_cause_if(
+        &mut causes,
+        host_facts.auth_status_responses_seen > 0,
+        DiagnosticsLikelyCause::AuthRejected,
+    );
+    let lower_error = last_error.unwrap_or_default().to_ascii_lowercase();
+    push_cause_if(
+        &mut causes,
+        host_facts.auth_status_responses_seen == 0
+            && ["auth", "login", "token", "credential", "keychain"]
+                .iter()
+                .any(|needle| lower_error.contains(needle)),
+        DiagnosticsLikelyCause::AuthMissing,
+    );
+    push_cause_if(
+        &mut causes,
+        data_source_reachable == DataSourceReachability::Unreachable,
+        DiagnosticsLikelyCause::DataSourceUnreachable,
+    );
+    push_cause_if(
+        &mut causes,
+        !missing_metrics.is_empty(),
+        DiagnosticsLikelyCause::ManifestMismatch,
+    );
+    push_cause_if(
+        &mut causes,
+        returned_metrics.is_empty() && last_error.is_none(),
+        DiagnosticsLikelyCause::NoMetricsReturned,
+    );
+    if causes.is_empty() && parser_execution_status == ParserExecutionStatus::Failed {
+        causes.push(DiagnosticsLikelyCause::Unknown);
+    }
+    causes
+}
+
+fn push_cause_if(
+    causes: &mut Vec<DiagnosticsLikelyCause>,
+    condition: bool,
+    cause: DiagnosticsLikelyCause,
+) {
+    if condition && !causes.contains(&cause) {
+        causes.push(cause);
     }
 }
 
@@ -719,7 +1047,7 @@ fn error_line(message: String) -> MetricLine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::plugin_engine::manifest::{LoadedPlugin, PluginManifest};
+    use crate::plugin_engine::manifest::{LoadedPlugin, ManifestLine, PluginManifest};
     use serde_json::Value as JsonValue;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -741,6 +1069,16 @@ mod tests {
             entry_script: entry_script.to_string(),
             icon_data_url: "data:image/svg+xml;base64,".to_string(),
         }
+    }
+
+    fn test_plugin_with_manifest_lines(
+        entry_script: &str,
+        lines: Vec<ManifestLine>,
+    ) -> LoadedPlugin {
+        let mut plugin = test_plugin(entry_script);
+        plugin.manifest.version = "0.1.0".to_string();
+        plugin.manifest.lines = lines;
+        plugin
     }
 
     fn temp_app_dir(label: &str) -> PathBuf {
@@ -808,6 +1146,113 @@ mod tests {
         );
 
         assert_eq!(error_text(output), "probe timed out after 5ms");
+    }
+
+    #[test]
+    fn run_probe_includes_safe_diagnostics_and_missing_manifest_metrics() {
+        let plugin = test_plugin_with_manifest_lines(
+            r#"
+            globalThis.__pulseusage_plugin = {
+                probe(ctx) {
+                    try {
+                        ctx.host.fs.readText("missing-diagnostics-fixture");
+                    } catch (e) {}
+                    return {
+                        lines: [
+                            ctx.line.progress({
+                                label: "Base Credits",
+                                used: 10,
+                                limit: 100,
+                                format: { kind: "count", suffix: "credits" }
+                            })
+                        ]
+                    };
+                }
+            };
+            "#,
+            vec![
+                ManifestLine {
+                    line_type: "progress".to_string(),
+                    label: "Base Credits".to_string(),
+                    scope: "overview".to_string(),
+                    primary_order: None,
+                    classification: Some("required".to_string()),
+                },
+                ManifestLine {
+                    line_type: "text".to_string(),
+                    label: "Bonus Credits".to_string(),
+                    scope: "detail".to_string(),
+                    primary_order: None,
+                    classification: Some("optional".to_string()),
+                },
+                ManifestLine {
+                    line_type: "badge".to_string(),
+                    label: "Plan".to_string(),
+                    scope: "overview".to_string(),
+                    primary_order: None,
+                    classification: None,
+                },
+            ],
+        );
+
+        let output = run_probe(&plugin, &temp_app_dir("diagnostics"), "0.0.0");
+
+        assert!(output.diagnostics.provider_loaded);
+        assert_eq!(
+            output.diagnostics.provider_version.as_deref(),
+            Some("0.1.0")
+        );
+        assert_eq!(
+            output.diagnostics.parser_execution_status,
+            ParserExecutionStatus::Success
+        );
+        assert_eq!(output.diagnostics.auth_detected, AuthDetected::Unknown);
+        assert_eq!(
+            output.diagnostics.data_source_reachable,
+            DataSourceReachability::Unreachable
+        );
+        assert_eq!(output.diagnostics.host_facts.local_reads_attempted, 1);
+        assert_eq!(output.diagnostics.host_facts.local_read_failures, 1);
+        assert_eq!(output.diagnostics.returned_metrics.len(), 1);
+        assert_eq!(output.diagnostics.missing_metrics.len(), 2);
+        assert_eq!(
+            output.diagnostics.missing_metrics[0].classification,
+            MetricClassification::Optional
+        );
+        assert_eq!(
+            output.diagnostics.missing_metrics[1].classification,
+            MetricClassification::Unknown
+        );
+    }
+
+    #[test]
+    fn run_probe_diagnostics_redacts_sensitive_error_text() {
+        let raw_email = ["user", "@", "example.invalid"].concat();
+        let raw_secret = ["sk", "-", "test", "-", "secret", "-1234567890"].concat();
+        let raw_path = ["/", "Users", "/", "sample", "/.config/app"].concat();
+        let raw_error = format!("Failed for {raw_email} with {raw_secret} at {raw_path}");
+        let js_error = serde_json::to_string(&raw_error).expect("serialize JS error string");
+        let plugin_source = format!(
+            r#"
+            globalThis.__pulseusage_plugin = {{
+                probe() {{
+                    throw {js_error};
+                }}
+            }};
+            "#,
+        );
+        let plugin = test_plugin(&plugin_source);
+
+        let output = run_probe(&plugin, &temp_app_dir("diagnostics-redaction"), "0.0.0");
+        let last_error = output
+            .diagnostics
+            .last_error
+            .as_deref()
+            .expect("diagnostic error");
+        assert!(!last_error.contains(&raw_email));
+        assert!(!last_error.contains(&raw_secret));
+        assert!(!last_error.contains(&raw_path));
+        assert!(last_error.contains("[REDACTED]"));
     }
 
     #[test]
