@@ -9,8 +9,10 @@
     "build:release": "./scripts/build-release.sh",
     "ccusage:bump": "bun ./scripts/bump-ccusage-version.mjs",
     "bundle:plugins": "bun copy-bundled.cjs",
+    "validate:providers": "bun scripts/validate-provider-metadata.mjs",
     "preview": "vite preview",
     "test": "vitest",
+    "test:provider-validator": "vitest run --config scripts/vitest.config.mjs",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest run --coverage.enabled",
     "tauri": "tauri"
