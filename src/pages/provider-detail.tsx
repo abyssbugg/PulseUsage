@@ -1,4 +1,5 @@
 import { ProviderCard } from "@/components/provider-card"
+import { ProviderDiagnosticsSection } from "@/components/provider-diagnostics"
 import type { PluginDisplayState } from "@/lib/plugin-types"
 import type { DisplayMode, ResetTimerDisplayMode, TimeFormatMode } from "@/lib/settings"
 
@@ -28,24 +29,27 @@ export function ProviderDetailPage({
   }
 
   return (
-    <ProviderCard
-      name={plugin.meta.name}
-      plan={plugin.data?.plan}
-      links={plugin.meta.links}
-      showSeparator={false}
-      loading={plugin.loading}
-      error={plugin.error}
-      lines={plugin.data?.lines ?? []}
-      skeletonLines={plugin.meta.lines}
-      lastManualRefreshAt={plugin.lastManualRefreshAt}
-      lastUpdatedAt={plugin.lastUpdatedAt}
-      onRetry={onRetry}
-      scopeFilter="all"
-      showUnavailableManifestLines
-      displayMode={displayMode}
-      resetTimerDisplayMode={resetTimerDisplayMode}
-      timeFormatMode={timeFormatMode}
-      onResetTimerDisplayModeToggle={onResetTimerDisplayModeToggle}
-    />
+    <div className="space-y-3">
+      <ProviderCard
+        name={plugin.meta.name}
+        plan={plugin.data?.plan}
+        links={plugin.meta.links}
+        showSeparator={false}
+        loading={plugin.loading}
+        error={plugin.error}
+        lines={plugin.data?.lines ?? []}
+        skeletonLines={plugin.meta.lines}
+        lastManualRefreshAt={plugin.lastManualRefreshAt}
+        lastUpdatedAt={plugin.lastUpdatedAt}
+        onRetry={onRetry}
+        scopeFilter="all"
+        showUnavailableManifestLines
+        displayMode={displayMode}
+        resetTimerDisplayMode={resetTimerDisplayMode}
+        timeFormatMode={timeFormatMode}
+        onResetTimerDisplayModeToggle={onResetTimerDisplayModeToggle}
+      />
+      <ProviderDiagnosticsSection plugin={plugin} />
+    </div>
   )
 }
