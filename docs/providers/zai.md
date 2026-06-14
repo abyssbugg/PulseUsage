@@ -169,6 +169,14 @@ Returns session token usage and web search quotas.
 | Weekly       | Token usage as percentage (0-100%) with 7-day reset timer                   |
 | Web Searches | Web search/reader call count (used / limit), resets on the 1st of each month |
 
+## Metric classification
+
+| Metric | Classification | Evidence |
+|---|---|---|
+| Session | Required | Provider docs map 5-hour `TOKENS_LIMIT`; tests cover session rendering. |
+| Weekly | Optional | Provider docs describe weekly limits; tests cover present and absent weekly entries. |
+| Web Searches | Optional | Provider docs map `TIME_LIMIT`; tests cover present and absent web-search entries. |
+
 ## Errors
 
 | Condition     | Message                                                    |

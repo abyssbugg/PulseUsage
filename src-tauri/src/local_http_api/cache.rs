@@ -325,6 +325,7 @@ pub(super) fn enabled_snapshots_ordered(state: &CacheState) -> Vec<CachedPluginS
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::plugin_engine::diagnostics::ProviderDiagnostics;
     use crate::plugin_engine::runtime::{MetricLine, PluginOutput, ProgressFormat};
     use serial_test::serial;
     use std::time::Instant;
@@ -351,6 +352,7 @@ mod tests {
                 subtitle: None,
             }],
             icon_url: String::new(),
+            diagnostics: ProviderDiagnostics::default(),
         }
     }
 

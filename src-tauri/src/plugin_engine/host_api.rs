@@ -1,3 +1,4 @@
+use crate::plugin_engine::diagnostics::ProbeDiagnosticsRecorder;
 use aes_gcm::{
     AesGcm, Nonce,
     aead::{Aead, KeyInit, OsRng, generic_array::typenum::U16, rand_core::RngCore},
@@ -32,6 +33,15 @@ const WHITELISTED_ENV_VARS: [&str; 16] = [
     "PI_CODING_AGENT_DIR",
 ];
 const MIN_BLOCKING_TIMEOUT: Duration = Duration::from_millis(1);
+
+fn is_credential_env_var(name: &str) -> bool {
+    let upper = name.to_ascii_uppercase();
+    upper.contains("TOKEN")
+        || upper.contains("API_KEY")
+        || upper.ends_with("_KEY")
+        || upper.contains("SECRET")
+        || upper.contains("PASSWORD")
+}
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ProbeDeadline {
@@ -378,9 +388,7 @@ fn redact_body(body: &str) -> String {
         })
         .to_string();
 
-    if let Ok(devin_session_re) =
-        regex_lite::Regex::new(r#"devin-session-token\$[^\s"',}\]]+"#)
-    {
+    if let Ok(devin_session_re) = regex_lite::Regex::new(r#"devin-session-token\$[^\s"',}\]]+"#) {
         result = devin_session_re
             .replace_all(&result, |caps: &regex_lite::Captures| {
                 redact_value(&caps[0])
@@ -467,9 +475,7 @@ pub(crate) fn redact_log_message(msg: &str) -> String {
             })
             .to_string();
     }
-    if let Ok(devin_session_re) =
-        regex_lite::Regex::new(r#"devin-session-token\$[^\s"',}\]]+"#)
-    {
+    if let Ok(devin_session_re) = regex_lite::Regex::new(r#"devin-session-token\$[^\s"',}\]]+"#) {
         result = devin_session_re
             .replace_all(&result, |caps: &regex_lite::Captures| {
                 redact_value(&caps[0])
@@ -595,6 +601,7 @@ pub(crate) fn inject_host_api<'js>(
         app_data_dir,
         app_version,
         ProbeDeadline::none(),
+        ProbeDiagnosticsRecorder::default(),
     )
 }
 
@@ -604,6 +611,7 @@ pub(crate) fn inject_host_api_with_deadline<'js>(
     app_data_dir: &PathBuf,
     app_version: &str,
     deadline: ProbeDeadline,
+    diagnostics_recorder: ProbeDiagnosticsRecorder,
 ) -> rquickjs::Result<()> {
     let globals = ctx.globals();
     let probe_ctx = Object::new(ctx.clone())?;
@@ -630,15 +638,21 @@ pub(crate) fn inject_host_api_with_deadline<'js>(
 
     let host = Object::new(ctx.clone())?;
     inject_log(ctx, &host, plugin_id)?;
-    inject_fs(ctx, &host)?;
-    inject_plist(ctx, &host)?;
+    inject_fs(ctx, &host, diagnostics_recorder.clone())?;
+    inject_plist(ctx, &host, diagnostics_recorder.clone())?;
     inject_crypto(ctx, &host)?;
-    inject_env(ctx, &host, plugin_id)?;
-    inject_http(ctx, &host, plugin_id, deadline)?;
-    inject_keychain(ctx, &host, plugin_id)?;
-    inject_sqlite(ctx, &host)?;
-    inject_ls(ctx, &host, plugin_id)?;
-    inject_ccusage(ctx, &host, plugin_id, deadline)?;
+    inject_env(ctx, &host, plugin_id, diagnostics_recorder.clone())?;
+    inject_http(
+        ctx,
+        &host,
+        plugin_id,
+        deadline,
+        diagnostics_recorder.clone(),
+    )?;
+    inject_keychain(ctx, &host, plugin_id, diagnostics_recorder.clone())?;
+    inject_sqlite(ctx, &host, diagnostics_recorder.clone())?;
+    inject_ls(ctx, &host, plugin_id, diagnostics_recorder.clone())?;
+    inject_ccusage(ctx, &host, plugin_id, deadline, diagnostics_recorder)?;
 
     probe_ctx.set("host", host)?;
     globals.set("__pulseusage_ctx", probe_ctx)?;
@@ -677,9 +691,14 @@ fn inject_log<'js>(ctx: &Ctx<'js>, host: &Object<'js>, plugin_id: &str) -> rquic
     Ok(())
 }
 
-fn inject_fs<'js>(ctx: &Ctx<'js>, host: &Object<'js>) -> rquickjs::Result<()> {
+fn inject_fs<'js>(
+    ctx: &Ctx<'js>,
+    host: &Object<'js>,
+    diagnostics_recorder: ProbeDiagnosticsRecorder,
+) -> rquickjs::Result<()> {
     let fs_obj = Object::new(ctx.clone())?;
 
+    let read_text_recorder = diagnostics_recorder.clone();
     fs_obj.set(
         "exists",
         Function::new(ctx.clone(), move |path: String| -> bool {
@@ -694,8 +713,16 @@ fn inject_fs<'js>(ctx: &Ctx<'js>, host: &Object<'js>) -> rquickjs::Result<()> {
             ctx.clone(),
             move |ctx_inner: Ctx<'_>, path: String| -> rquickjs::Result<String> {
                 let expanded = expand_path(&path);
-                std::fs::read_to_string(&expanded)
-                    .map_err(|e| Exception::throw_message(&ctx_inner, &e.to_string()))
+                match std::fs::read_to_string(&expanded) {
+                    Ok(value) => {
+                        read_text_recorder.record_local_read(true);
+                        Ok(value)
+                    }
+                    Err(e) => {
+                        read_text_recorder.record_local_read(false);
+                        Err(Exception::throw_message(&ctx_inner, &e.to_string()))
+                    }
+                }
             },
         )?,
     )?;
@@ -712,14 +739,23 @@ fn inject_fs<'js>(ctx: &Ctx<'js>, host: &Object<'js>) -> rquickjs::Result<()> {
         )?,
     )?;
 
+    let list_dir_recorder = diagnostics_recorder;
     fs_obj.set(
         "listDir",
         Function::new(
             ctx.clone(),
             move |ctx_inner: Ctx<'_>, path: String| -> rquickjs::Result<Vec<String>> {
                 let expanded = expand_path(&path);
-                let entries = std::fs::read_dir(&expanded)
-                    .map_err(|e| Exception::throw_message(&ctx_inner, &e.to_string()))?;
+                let entries = match std::fs::read_dir(&expanded) {
+                    Ok(entries) => {
+                        list_dir_recorder.record_local_read(true);
+                        entries
+                    }
+                    Err(e) => {
+                        list_dir_recorder.record_local_read(false);
+                        return Err(Exception::throw_message(&ctx_inner, &e.to_string()));
+                    }
+                };
 
                 let mut names = Vec::new();
                 for entry in entries {
@@ -743,7 +779,11 @@ fn inject_fs<'js>(ctx: &Ctx<'js>, host: &Object<'js>) -> rquickjs::Result<()> {
     Ok(())
 }
 
-fn inject_plist<'js>(ctx: &Ctx<'js>, host: &Object<'js>) -> rquickjs::Result<()> {
+fn inject_plist<'js>(
+    ctx: &Ctx<'js>,
+    host: &Object<'js>,
+    diagnostics_recorder: ProbeDiagnosticsRecorder,
+) -> rquickjs::Result<()> {
     let plist_obj = Object::new(ctx.clone())?;
 
     plist_obj.set(
@@ -752,6 +792,7 @@ fn inject_plist<'js>(ctx: &Ctx<'js>, host: &Object<'js>) -> rquickjs::Result<()>
             ctx.clone(),
             move |ctx_inner: Ctx<'_>, path: String| -> rquickjs::Result<String> {
                 if !cfg!(target_os = "macos") {
+                    diagnostics_recorder.record_local_read(false);
                     return Err(Exception::throw_message(
                         &ctx_inner,
                         "plist API is only supported on macOS",
@@ -763,10 +804,12 @@ fn inject_plist<'js>(ctx: &Ctx<'js>, host: &Object<'js>) -> rquickjs::Result<()>
                     .args(["-convert", "json", "-o", "-", &expanded])
                     .output()
                     .map_err(|e| {
+                        diagnostics_recorder.record_local_read(false);
                         Exception::throw_message(&ctx_inner, &format!("plist read failed: {}", e))
                     })?;
 
                 if !output.status.success() {
+                    diagnostics_recorder.record_local_read(false);
                     let stderr = String::from_utf8_lossy(&output.stderr);
                     return Err(Exception::throw_message(
                         &ctx_inner,
@@ -774,6 +817,7 @@ fn inject_plist<'js>(ctx: &Ctx<'js>, host: &Object<'js>) -> rquickjs::Result<()>
                     ));
                 }
 
+                diagnostics_recorder.record_local_read(true);
                 Ok(String::from_utf8_lossy(&output.stdout).to_string())
             },
         )?,
@@ -833,7 +877,12 @@ fn inject_crypto<'js>(ctx: &Ctx<'js>, host: &Object<'js>) -> rquickjs::Result<()
     Ok(())
 }
 
-fn inject_env<'js>(ctx: &Ctx<'js>, host: &Object<'js>, _plugin_id: &str) -> rquickjs::Result<()> {
+fn inject_env<'js>(
+    ctx: &Ctx<'js>,
+    host: &Object<'js>,
+    _plugin_id: &str,
+    diagnostics_recorder: ProbeDiagnosticsRecorder,
+) -> rquickjs::Result<()> {
     let env_obj = Object::new(ctx.clone())?;
     env_obj.set(
         "get",
@@ -841,8 +890,11 @@ fn inject_env<'js>(ctx: &Ctx<'js>, host: &Object<'js>, _plugin_id: &str) -> rqui
             if !WHITELISTED_ENV_VARS.contains(&name.as_str()) {
                 return None;
             }
-
-            resolve_env_value(&name)
+            let value = resolve_env_value(&name);
+            if is_credential_env_var(&name) {
+                diagnostics_recorder.record_auth_read(value.is_some());
+            }
+            value
         })?,
     )?;
     host.set("env", env_obj)?;
@@ -854,6 +906,7 @@ fn inject_http<'js>(
     host: &Object<'js>,
     plugin_id: &str,
     deadline: ProbeDeadline,
+    diagnostics_recorder: ProbeDiagnosticsRecorder,
 ) -> rquickjs::Result<()> {
     let http_obj = Object::new(ctx.clone())?;
     let pid = plugin_id.to_string();
@@ -874,6 +927,7 @@ fn inject_http<'js>(
                 let method_str = req.method.as_deref().unwrap_or("GET");
                 let redacted_url = redact_url(&req.url);
                 log::info!("[plugin:{}] HTTP {} {}", pid, method_str, redacted_url);
+                diagnostics_recorder.record_http_attempt();
 
                 let mut header_map = reqwest::header::HeaderMap::new();
                 if let Some(headers) = &req.headers {
@@ -938,6 +992,7 @@ fn inject_http<'js>(
                     .map_err(|e| Exception::throw_message(&ctx_inner, &e.to_string()))?;
 
                 let status = response.status().as_u16();
+                diagnostics_recorder.record_http_status(status);
                 let mut resp_headers = std::collections::HashMap::new();
                 for (key, value) in response.headers().iter() {
                     let header_value = value.to_str().map_err(|e| {
@@ -1356,7 +1411,12 @@ struct LsDiscoverResult {
     extension_port: Option<i32>,
 }
 
-fn inject_ls<'js>(ctx: &Ctx<'js>, host: &Object<'js>, plugin_id: &str) -> rquickjs::Result<()> {
+fn inject_ls<'js>(
+    ctx: &Ctx<'js>,
+    host: &Object<'js>,
+    plugin_id: &str,
+    diagnostics_recorder: ProbeDiagnosticsRecorder,
+) -> rquickjs::Result<()> {
     let ls_obj = Object::new(ctx.clone())?;
     let pid = plugin_id.to_string();
 
@@ -1366,6 +1426,7 @@ fn inject_ls<'js>(ctx: &Ctx<'js>, host: &Object<'js>, plugin_id: &str) -> rquick
             ctx.clone(),
             move |ctx_inner: Ctx<'_>, opts_json: String| -> rquickjs::Result<String> {
                 let opts: LsDiscoverOpts = serde_json::from_str(&opts_json).map_err(|e| {
+                    diagnostics_recorder.record_local_read(false);
                     Exception::throw_message(&ctx_inner, &format!("invalid discover opts: {}", e))
                 })?;
 
@@ -1382,12 +1443,14 @@ fn inject_ls<'js>(ctx: &Ctx<'js>, host: &Object<'js>, plugin_id: &str) -> rquick
                 {
                     Ok(o) => o,
                     Err(e) => {
+                        diagnostics_recorder.record_local_read(false);
                         log::warn!("[plugin:{}] ps failed: {}", pid, e);
                         return Ok("null".to_string());
                     }
                 };
 
                 if !ps_output.status.success() {
+                    diagnostics_recorder.record_local_read(false);
                     log::warn!("[plugin:{}] ps returned non-zero", pid);
                     return Ok("null".to_string());
                 }
@@ -1438,6 +1501,7 @@ fn inject_ls<'js>(ctx: &Ctx<'js>, host: &Object<'js>, plugin_id: &str) -> rquick
                 }
 
                 if candidates.is_empty() {
+                    diagnostics_recorder.record_local_read(false);
                     log::info!("[plugin:{}] LS process not found", pid);
                     return Ok("null".to_string());
                 }
@@ -1527,11 +1591,13 @@ fn inject_ls<'js>(ctx: &Ctx<'js>, host: &Object<'js>, plugin_id: &str) -> rquick
                         extra,
                         extension_port,
                     };
+                    diagnostics_recorder.record_local_read(true);
 
                     return serde_json::to_string(&result).map_err(|e| {
                         Exception::throw_message(&ctx_inner, &format!("serialize failed: {}", e))
                     });
                 }
+                diagnostics_recorder.record_local_read(false);
 
                 Ok("null".to_string())
             },
@@ -2434,6 +2500,7 @@ fn inject_ccusage<'js>(
     host: &Object<'js>,
     plugin_id: &str,
     deadline: ProbeDeadline,
+    diagnostics_recorder: ProbeDiagnosticsRecorder,
 ) -> rquickjs::Result<()> {
     let ccusage_obj = Object::new(ctx.clone())?;
     let pid = plugin_id.to_string();
@@ -2452,11 +2519,12 @@ fn inject_ccusage<'js>(
                 };
                 let provider = resolve_ccusage_provider(&opts, &pid);
                 let Some(_active_query) = CcusageQueryGuard::acquire(provider) else {
+                    diagnostics_recorder.record_local_read(false);
                     log::warn!("[plugin:{}] ccusage query already running", pid);
                     return Ok(serde_json::json!({ "status": "runner_failed" }).to_string());
                 };
                 let runners = collect_ccusage_runners();
-                Ok(run_ccusage_query_with_runners(
+                let result = run_ccusage_query_with_runners(
                     runners,
                     &opts,
                     provider,
@@ -2466,7 +2534,19 @@ fn inject_ccusage<'js>(
                             kind, program, opts, provider, plugin_id, deadline,
                         )
                     },
-                ))
+                );
+                let succeeded = serde_json::from_str::<serde_json::Value>(&result)
+                    .ok()
+                    .and_then(|value| {
+                        value
+                            .get("status")
+                            .and_then(|status| status.as_str())
+                            .map(str::to_string)
+                    })
+                    .as_deref()
+                    == Some("ok");
+                diagnostics_recorder.record_local_read(succeeded);
+                Ok(result)
             },
         )?,
     )?;
@@ -2500,9 +2580,11 @@ fn inject_keychain<'js>(
     ctx: &Ctx<'js>,
     host: &Object<'js>,
     plugin_id: &str,
+    diagnostics_recorder: ProbeDiagnosticsRecorder,
 ) -> rquickjs::Result<()> {
     let keychain_obj = Object::new(ctx.clone())?;
     let pid_read = plugin_id.to_string();
+    let read_recorder = diagnostics_recorder.clone();
 
     keychain_obj.set(
         "readGenericPassword",
@@ -2513,6 +2595,7 @@ fn inject_keychain<'js>(
                   account: Option<String>|
                   -> rquickjs::Result<String> {
                 if !cfg!(target_os = "macos") {
+                    read_recorder.record_auth_read(false);
                     return Err(Exception::throw_message(
                         &ctx_inner,
                         "keychain API is only supported on macOS",
@@ -2546,6 +2629,7 @@ fn inject_keychain<'js>(
                     .args(args)
                     .output()
                     .map_err(|e| {
+                        read_recorder.record_auth_read(false);
                         Exception::throw_message(
                             &ctx_inner,
                             &format!("keychain read failed: {}", e),
@@ -2553,6 +2637,7 @@ fn inject_keychain<'js>(
                     })?;
 
                 if !output.status.success() {
+                    read_recorder.record_auth_read(false);
                     let stderr = String::from_utf8_lossy(&output.stderr);
                     let first_line = stderr.lines().next().unwrap_or("").trim();
                     if let Some(ref redacted) = redacted_account {
@@ -2591,18 +2676,21 @@ fn inject_keychain<'js>(
                         service
                     );
                 }
+                read_recorder.record_auth_read(true);
                 Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
             },
         )?,
     )?;
 
     let pid_read_current_user = plugin_id.to_string();
+    let read_current_user_recorder = diagnostics_recorder;
     keychain_obj.set(
         "readGenericPasswordForCurrentUser",
         Function::new(
             ctx.clone(),
             move |ctx_inner: Ctx<'_>, service: String| -> rquickjs::Result<String> {
                 if !cfg!(target_os = "macos") {
+                    read_current_user_recorder.record_auth_read(false);
                     return Err(Exception::throw_message(
                         &ctx_inner,
                         "keychain API is only supported on macOS",
@@ -2621,6 +2709,7 @@ fn inject_keychain<'js>(
                     .args(&args)
                     .output()
                     .map_err(|e| {
+                        read_current_user_recorder.record_auth_read(false);
                         Exception::throw_message(
                             &ctx_inner,
                             &format!("keychain read failed: {}", e),
@@ -2628,6 +2717,7 @@ fn inject_keychain<'js>(
                     })?;
 
                 if !output.status.success() {
+                    read_current_user_recorder.record_auth_read(false);
                     let stderr = String::from_utf8_lossy(&output.stderr);
                     let first_line = stderr.lines().next().unwrap_or("").trim();
                     log::warn!(
@@ -2649,6 +2739,7 @@ fn inject_keychain<'js>(
                     service,
                     redacted_account
                 );
+                read_current_user_recorder.record_auth_read(true);
                 Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
             },
         )?,
@@ -2791,7 +2882,11 @@ fn inject_keychain<'js>(
     Ok(())
 }
 
-fn inject_sqlite<'js>(ctx: &Ctx<'js>, host: &Object<'js>) -> rquickjs::Result<()> {
+fn inject_sqlite<'js>(
+    ctx: &Ctx<'js>,
+    host: &Object<'js>,
+    diagnostics_recorder: ProbeDiagnosticsRecorder,
+) -> rquickjs::Result<()> {
     let sqlite_obj = Object::new(ctx.clone())?;
 
     sqlite_obj.set(
@@ -2800,6 +2895,7 @@ fn inject_sqlite<'js>(ctx: &Ctx<'js>, host: &Object<'js>) -> rquickjs::Result<()
             ctx.clone(),
             move |ctx_inner: Ctx<'_>, db_path: String, sql: String| -> rquickjs::Result<String> {
                 if sql.lines().any(|line| line.trim_start().starts_with('.')) {
+                    diagnostics_recorder.record_local_read(false);
                     return Err(Exception::throw_message(
                         &ctx_inner,
                         "sqlite3 dot-commands are not allowed",
@@ -2813,10 +2909,12 @@ fn inject_sqlite<'js>(ctx: &Ctx<'js>, host: &Object<'js>) -> rquickjs::Result<()
                     .args(["-readonly", "-json", &expanded, &sql])
                     .output()
                     .map_err(|e| {
+                        diagnostics_recorder.record_local_read(false);
                         Exception::throw_message(&ctx_inner, &format!("sqlite3 exec failed: {}", e))
                     })?;
 
                 if primary.status.success() {
+                    diagnostics_recorder.record_local_read(true);
                     return Ok(String::from_utf8_lossy(&primary.stdout).to_string());
                 }
 
@@ -2831,10 +2929,12 @@ fn inject_sqlite<'js>(ctx: &Ctx<'js>, host: &Object<'js>) -> rquickjs::Result<()
                     .args(["-readonly", "-json", &uri_path, &sql])
                     .output()
                     .map_err(|e| {
+                        diagnostics_recorder.record_local_read(false);
                         Exception::throw_message(&ctx_inner, &format!("sqlite3 exec failed: {}", e))
                     })?;
 
                 if !fallback.status.success() {
+                    diagnostics_recorder.record_local_read(false);
                     let stderr_primary = String::from_utf8_lossy(&primary.stderr);
                     let stderr_fallback = String::from_utf8_lossy(&fallback.stderr);
                     return Err(Exception::throw_message(
@@ -2847,6 +2947,7 @@ fn inject_sqlite<'js>(ctx: &Ctx<'js>, host: &Object<'js>) -> rquickjs::Result<()
                     ));
                 }
 
+                diagnostics_recorder.record_local_read(true);
                 Ok(String::from_utf8_lossy(&fallback.stdout).to_string())
             },
         )?,
@@ -2948,6 +3049,15 @@ mod tests {
         let stdout = "banner line\nanother message\n  sk-test-key-12345  \n";
         let value = last_non_empty_trimmed_line(stdout);
         assert_eq!(value.as_deref(), Some("sk-test-key-12345"));
+    }
+
+    #[test]
+    fn credential_env_var_detection_ignores_non_secret_config() {
+        assert!(!is_credential_env_var("CODEX_HOME"));
+        assert!(!is_credential_env_var("USE_LOCAL_OAUTH"));
+        assert!(!is_credential_env_var("CLAUDE_CODE_OAUTH_CLIENT_ID"));
+        assert!(is_credential_env_var("CLAUDE_CODE_OAUTH_TOKEN"));
+        assert!(is_credential_env_var("ZAI_API_KEY"));
     }
 
     #[test]

@@ -114,6 +114,14 @@ Response fields used:
 
 Devin currently returns no `weeklyQuotaRemainingPercent` field in the observed payload. When `hideDailyQuota` is `true`, PulseUsage maps `dailyQuotaRemainingPercent` as a used percentage on the visible weekly line and uses `weeklyQuotaResetAtUnix` for the reset timer. Despite the field name, `100` matches Devin's `Weekly quota: 100%` UI, not `100% left`.
 
+## Metric classification
+
+| Metric | Classification | Evidence |
+|---|---|---|
+| Weekly quota | Required | Provider docs describe weekly quota as the main visible quota; tests cover hidden-daily mapping to weekly. |
+| Daily quota | Plan-dependent | Provider docs and tests show this is omitted when Devin marks daily quota hidden. |
+| Extra usage balance | Optional | Provider docs map `overageBalanceMicros`; tests cover omitted balance. |
+
 ## Plugin Strategy
 
 1. Read CLI credentials.

@@ -49,27 +49,32 @@ describe("warp plugin", () => {
         type: "progress",
         label: "Base Credits",
         scope: "overview",
+        classification: "required",
         primaryOrder: 1,
       },
       {
         type: "text",
         label: "Personal Credits",
         scope: "overview",
+        classification: "optional",
       },
       {
         type: "text",
         label: "Monthly Spend Limit",
         scope: "detail",
+        classification: "optional",
       },
       {
         type: "badge",
         label: "Auto-reload",
         scope: "detail",
+        classification: "optional",
       },
       {
         type: "text",
         label: "Purchased This Month",
         scope: "detail",
+        classification: "optional",
       },
     ])
   })

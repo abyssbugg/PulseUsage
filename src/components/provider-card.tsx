@@ -16,6 +16,7 @@ import { groupLinesByType } from "@/lib/group-lines-by-type"
 import { clamp01, formatCountNumber, formatFixedPrecisionNumber } from "@/lib/utils"
 import { calculateDeficit, calculatePaceStatus, type PaceStatus } from "@/lib/pace-status"
 import { buildPaceDetailText, formatDeficitText, formatRunsOutText, getPaceStatusText } from "@/lib/pace-tooltip"
+import { redactDiagnosticText } from "@/lib/provider-diagnostics"
 import { formatResetAbsoluteLabel, formatResetRelativeLabel, formatResetTooltipText } from "@/lib/reset-tooltip"
 
 interface ProviderCardProps {
@@ -180,6 +181,7 @@ export function ProviderCard({
         ),
     [links]
   )
+  const safeError = error ? redactDiagnosticText(error) : null
 
   // Format remaining cooldown time as "Xm Ys"
   const formatRemainingTime = () => {
@@ -292,9 +294,9 @@ export function ProviderCard({
             ))}
           </div>
         )}
-        {error && !hasStaleData && <PluginError message={error} />}
+        {safeError && !hasStaleData && <PluginError message={safeError} />}
 
-        {error && hasStaleData && (
+        {safeError && hasStaleData && (
           <Tooltip>
             <TooltipTrigger
               render={(props) => (
@@ -303,12 +305,12 @@ export function ProviderCard({
                   className="flex items-center gap-1.5 mb-2 text-xs text-destructive"
                 >
                   <AlertCircle className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate">{error}</span>
+                  <span className="truncate">{safeError}</span>
                 </div>
               )}
             />
             <TooltipContent side="top" className="max-w-xs break-words text-xs">
-              {error}
+              {safeError}
             </TooltipContent>
           </Tooltip>
         )}
@@ -401,6 +403,10 @@ function MetricLineRenderer({
   }
 
   if (line.type === "badge") {
+    const badgeText = line.label === "Error" ? redactDiagnosticText(line.text) : line.text
+    const subtitle = line.label === "Error" && line.subtitle
+      ? redactDiagnosticText(line.subtitle)
+      : line.subtitle
     return (
       <div>
         <div className="flex justify-between items-center h-[22px]">
@@ -413,13 +419,13 @@ function MetricLineRenderer({
                 ? { color: line.color, borderColor: line.color }
                 : undefined
             }
-            title={line.text}
+            title={badgeText}
           >
-            {line.text}
+            {badgeText}
           </Badge>
         </div>
-        {line.subtitle && (
-          <div className="text-xs text-muted-foreground text-right -mt-0.5">{line.subtitle}</div>
+        {subtitle && (
+          <div className="text-xs text-muted-foreground text-right -mt-0.5">{subtitle}</div>
         )}
       </div>
     )
