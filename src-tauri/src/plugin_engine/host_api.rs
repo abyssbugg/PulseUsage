@@ -34,6 +34,15 @@ const WHITELISTED_ENV_VARS: [&str; 16] = [
 ];
 const MIN_BLOCKING_TIMEOUT: Duration = Duration::from_millis(1);
 
+fn is_credential_env_var(name: &str) -> bool {
+    let upper = name.to_ascii_uppercase();
+    upper.contains("TOKEN")
+        || upper.contains("API_KEY")
+        || upper.ends_with("_KEY")
+        || upper.contains("SECRET")
+        || upper.contains("PASSWORD")
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ProbeDeadline {
     expires_at: Option<Instant>,
@@ -882,7 +891,9 @@ fn inject_env<'js>(
                 return None;
             }
             let value = resolve_env_value(&name);
-            diagnostics_recorder.record_auth_read(value.is_some());
+            if is_credential_env_var(&name) {
+                diagnostics_recorder.record_auth_read(value.is_some());
+            }
             value
         })?,
     )?;
@@ -3038,6 +3049,15 @@ mod tests {
         let stdout = "banner line\nanother message\n  sk-test-key-12345  \n";
         let value = last_non_empty_trimmed_line(stdout);
         assert_eq!(value.as_deref(), Some("sk-test-key-12345"));
+    }
+
+    #[test]
+    fn credential_env_var_detection_ignores_non_secret_config() {
+        assert!(!is_credential_env_var("CODEX_HOME"));
+        assert!(!is_credential_env_var("USE_LOCAL_OAUTH"));
+        assert!(!is_credential_env_var("CLAUDE_CODE_OAUTH_CLIENT_ID"));
+        assert!(is_credential_env_var("CLAUDE_CODE_OAUTH_TOKEN"));
+        assert!(is_credential_env_var("ZAI_API_KEY"));
     }
 
     #[test]

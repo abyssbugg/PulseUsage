@@ -14,8 +14,8 @@ Classification values:
 - Live verified: Yes, 2026-06-07 audit.
 - Fixture coverage: All manifest lines covered.
 - Risk level: Medium.
-- Known evidence gaps: Live audit covered workspace credits; Free and Bonus remain fixture/docs-backed only.
-- Metric classifications: Credits=required; Free=planDependent; Bonus=planDependent.
+- Known evidence gaps: Live audit covered workspace credits; Free and Bonus remain fixture/docs-backed only; Credits can be absent for Free accounts with zero credits.
+- Metric classifications: Credits=planDependent; Free=planDependent; Bonus=planDependent.
 - Last audit date: 2026-06-07.
 - Last validation date: 2026-06-07.
 - Notes: Workspace credits gap was fixed before this branch.

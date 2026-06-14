@@ -82,7 +82,7 @@ Metric classification:
 
 | Metric | Classification | Evidence |
 |--------|----------------|----------|
-| Credits | Required | Present in live workspace response as `Workspace <name>: $3.88 remaining`; parser now returns this line. |
+| Credits | Plan-dependent | Present in live workspace response as `Workspace <name>: $3.88 remaining`; parser returns this for credits-only accounts or positive credits. |
 | Free | Plan-dependent | Live response did not contain `Amp Free`; parser returns this only when free-tier balance text is present. |
 | Bonus | Plan-dependent | Live response did not contain a bonus bracket; parser returns this only for active Free-tier promotions. |
 

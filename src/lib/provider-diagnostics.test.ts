@@ -122,12 +122,30 @@ describe("buildProviderDiagnostics", () => {
     const rawEmail = ["user", String.fromCharCode(64), "example.invalid"].join("")
     const rawSecret = ["sk", "-", "test", "-", "secret", "-1234567890"].join("")
     const rawPath = ["/", "Users", "/", "sample", "/.config/app"].join("")
-    const raw = `Failed for ${rawEmail} with ${rawSecret} at ${rawPath}`
+    const rawOptPath = ["/", "opt", "/", "pulseusage", "/cache.json"].join("")
+    const rawHomePath = ["~", "/", ".config", "/", "pulseusage", "/state.json"].join("")
+    const rawTokenParam = ["refresh", "_", "token", "=", "abc1234567890"].join("")
+    const rawApiKeyParam = ["api", "Key", "=", "key_value_1234567890"].join("")
+    const rawGitHubToken = ["ghp", "_", "abcdefghijklmnopqrstuvwxyz"].join("")
+    const rawUrl = "https://example.invalid/path?token=abc"
+    const rawWindowsPath = "C:\\Users\\sample\\AppData\\Local\\PulseUsage"
+    const rawUncPath = "\\\\server\\share\\pulseusage"
+    const raw = `Failed for ${rawEmail} with ${rawSecret} ${rawTokenParam} ${rawApiKeyParam} ${rawGitHubToken} at ${rawPath} ${rawOptPath} ${rawHomePath} ${rawUrl} ${rawWindowsPath} ${rawUncPath}`
     const redacted = redactDiagnosticText(raw)
     expect(redacted).not.toContain(rawEmail)
     expect(redacted).not.toContain(rawSecret)
+    expect(redacted).not.toContain(rawTokenParam)
+    expect(redacted).not.toContain(rawApiKeyParam)
+    expect(redacted).not.toContain(rawGitHubToken)
     expect(redacted).not.toContain(rawPath)
+    expect(redacted).not.toContain(rawOptPath)
+    expect(redacted).not.toContain(rawHomePath)
+    expect(redacted).not.toContain(rawUrl)
+    expect(redacted).not.toContain(rawWindowsPath)
+    expect(redacted).not.toContain(rawUncPath)
     expect(redacted).toContain("[REDACTED]")
+    expect(redacted).toContain("[URL]")
+    expect(redacted).toContain("[PATH]")
   })
 
   it("uses safe fallback diagnostics when runtime diagnostics are absent", () => {
@@ -148,5 +166,46 @@ describe("buildProviderDiagnostics", () => {
     expect(diagnostics.healthSummary).toBe("error")
     expect(diagnostics.lastError).toBe("Login required")
     expect(diagnostics.likelyCauses).toContain("authMissing")
+  })
+
+  it("keeps idle providers unknown without missing metric likely causes", () => {
+    const diagnostics = buildProviderDiagnostics(pluginState({
+      data: null,
+      lastUpdatedAt: null,
+    }))
+
+    expect(diagnostics.providerLoaded).toBe(false)
+    expect(diagnostics.parserExecutionStatus).toBe("notRun")
+    expect(diagnostics.healthSummary).toBe("unknown")
+    expect(diagnostics.missingMetrics).toEqual([])
+    expect(diagnostics.likelyCauses).not.toContain("manifestMismatch")
+  })
+
+  it("detects parser failures when an error badge appears with returned metrics", () => {
+    const diagnostics = buildProviderDiagnostics(pluginState({
+      data: {
+        providerId: "alpha",
+        displayName: "Alpha",
+        iconUrl: "",
+        lines: [
+          {
+            type: "progress",
+            label: "Base Credits",
+            used: 10,
+            limit: 100,
+            format: { kind: "count", suffix: "credits" },
+          },
+          { type: "badge", label: "Error", text: "Token expired", color: "#ef4444" },
+        ],
+      },
+      lastUpdatedAt: null,
+    }))
+
+    expect(diagnostics.parserExecutionStatus).toBe("failed")
+    expect(diagnostics.lastError).toBe("Token expired")
+    expect(diagnostics.returnedMetrics).toEqual([
+      { label: "Base Credits", type: "progress" },
+    ])
+    expect(diagnostics.likelyCauses).toContain("parserError")
   })
 })

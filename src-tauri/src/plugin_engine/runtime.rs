@@ -895,19 +895,36 @@ fn is_error_line(line: &MetricLine) -> bool {
 }
 
 fn last_error_from_lines(lines: &[MetricLine]) -> Option<String> {
-    if lines.len() != 1 {
-        return None;
-    }
-    match lines.first() {
-        Some(MetricLine::Badge { label, text, .. }) if label == "Error" => {
-            Some(if text.trim().is_empty() {
-                "Couldn't update data. Try again?".to_string()
-            } else {
-                text.clone()
-            })
+    lines.iter().rev().find_map(|line| match line {
+        MetricLine::Badge { label, text, .. } if label == "Error" => {
+            Some(error_message_or_default(text))
         }
         _ => None,
+    })
+}
+
+fn error_message_or_default(text: &str) -> String {
+    if text.trim().is_empty() {
+        "Couldn't update data. Try again?".to_string()
+    } else {
+        text.to_string()
     }
+}
+
+fn has_auth_keyword(text: &str) -> bool {
+    text.split(|ch: char| !ch.is_ascii_alphanumeric())
+        .any(|token| {
+            matches!(
+                token,
+                "auth" | "login" | "token" | "credential" | "keychain"
+            )
+        })
+}
+
+fn has_required_missing_metric(missing_metrics: &[ManifestMetricDiagnostic]) -> bool {
+    missing_metrics
+        .iter()
+        .any(|metric| metric.classification == MetricClassification::Required)
 }
 
 fn derive_auth_detected(host_facts: &SafeHostFacts) -> AuthDetected {
@@ -941,11 +958,10 @@ fn derive_health_summary(
     if parser_execution_status == ParserExecutionStatus::Failed {
         return DiagnosticsHealth::Error;
     }
-    if host_facts.auth_status_responses_seen > 0
-        || missing_metrics
-            .iter()
-            .any(|metric| metric.classification == MetricClassification::Required)
-    {
+    if parser_execution_status == ParserExecutionStatus::NotRun {
+        return DiagnosticsHealth::Unknown;
+    }
+    if host_facts.auth_status_responses_seen > 0 || has_required_missing_metric(missing_metrics) {
         return DiagnosticsHealth::Warning;
     }
     DiagnosticsHealth::Ok
@@ -973,10 +989,7 @@ fn derive_likely_causes(
     let lower_error = last_error.unwrap_or_default().to_ascii_lowercase();
     push_cause_if(
         &mut causes,
-        host_facts.auth_status_responses_seen == 0
-            && ["auth", "login", "token", "credential", "keychain"]
-                .iter()
-                .any(|needle| lower_error.contains(needle)),
+        host_facts.auth_status_responses_seen == 0 && has_auth_keyword(&lower_error),
         DiagnosticsLikelyCause::AuthMissing,
     );
     push_cause_if(
@@ -986,7 +999,7 @@ fn derive_likely_causes(
     );
     push_cause_if(
         &mut causes,
-        !missing_metrics.is_empty(),
+        has_required_missing_metric(missing_metrics),
         DiagnosticsLikelyCause::ManifestMismatch,
     );
     push_cause_if(
@@ -994,9 +1007,6 @@ fn derive_likely_causes(
         returned_metrics.is_empty() && last_error.is_none(),
         DiagnosticsLikelyCause::NoMetricsReturned,
     );
-    if causes.is_empty() && parser_execution_status == ParserExecutionStatus::Failed {
-        causes.push(DiagnosticsLikelyCause::Unknown);
-    }
     causes
 }
 
@@ -1230,7 +1240,8 @@ mod tests {
         let raw_email = ["user", "@", "example.invalid"].concat();
         let raw_secret = ["sk", "-", "test", "-", "secret", "-1234567890"].concat();
         let raw_path = ["/", "Users", "/", "sample", "/.config/app"].concat();
-        let raw_error = format!("Failed for {raw_email} with {raw_secret} at {raw_path}");
+        let raw_url = "https://example.invalid/path?token=abc";
+        let raw_error = format!("Failed for {raw_email} with {raw_secret} at {raw_path} {raw_url}");
         let js_error = serde_json::to_string(&raw_error).expect("serialize JS error string");
         let plugin_source = format!(
             r#"
@@ -1252,7 +1263,92 @@ mod tests {
         assert!(!last_error.contains(&raw_email));
         assert!(!last_error.contains(&raw_secret));
         assert!(!last_error.contains(&raw_path));
+        assert!(!last_error.contains(raw_url));
         assert!(last_error.contains("[REDACTED]"));
+        assert!(last_error.contains("[URL]"));
+    }
+
+    #[test]
+    fn run_probe_marks_mixed_error_output_as_failed() {
+        let plugin = test_plugin(
+            r#"
+            globalThis.__pulseusage_plugin = {
+                probe(ctx) {
+                    return {
+                        lines: [
+                            ctx.line.progress({
+                                label: "Base Credits",
+                                used: 10,
+                                limit: 100,
+                                format: { kind: "count", suffix: "credits" }
+                            }),
+                            ctx.line.badge({ label: "Error", text: "Token expired" })
+                        ]
+                    };
+                }
+            };
+            "#,
+        );
+
+        let output = run_probe(&plugin, &temp_app_dir("diagnostics-mixed-error"), "0.0.0");
+
+        assert_eq!(
+            output.diagnostics.parser_execution_status,
+            ParserExecutionStatus::Failed
+        );
+        assert_eq!(
+            output.diagnostics.last_error.as_deref(),
+            Some("Token expired")
+        );
+        assert_eq!(output.diagnostics.returned_metrics.len(), 1);
+        assert!(
+            output
+                .diagnostics
+                .likely_causes
+                .contains(&DiagnosticsLikelyCause::ParserError)
+        );
+    }
+
+    #[test]
+    fn derive_likely_causes_uses_auth_token_boundaries_and_required_missing_metrics() {
+        let optional_missing = vec![ManifestMetricDiagnostic {
+            label: "Bonus".to_string(),
+            line_type: "text".to_string(),
+            scope: "detail".to_string(),
+            classification: MetricClassification::Optional,
+        }];
+        let required_missing = vec![ManifestMetricDiagnostic {
+            label: "Base Credits".to_string(),
+            line_type: "progress".to_string(),
+            scope: "overview".to_string(),
+            classification: MetricClassification::Required,
+        }];
+        let returned_metrics = vec![ReturnedMetricDiagnostic {
+            label: "Base Credits".to_string(),
+            line_type: "progress".to_string(),
+        }];
+
+        let author_causes = derive_likely_causes(
+            ParserExecutionStatus::Success,
+            Some("author lookup failed"),
+            &SafeHostFacts::default(),
+            DataSourceReachability::Unknown,
+            &optional_missing,
+            &returned_metrics,
+        );
+        assert!(!author_causes.contains(&DiagnosticsLikelyCause::AuthMissing));
+        assert!(!author_causes.contains(&DiagnosticsLikelyCause::ManifestMismatch));
+
+        let token_causes = derive_likely_causes(
+            ParserExecutionStatus::Success,
+            Some("token missing"),
+            &SafeHostFacts::default(),
+            DataSourceReachability::Unknown,
+            &required_missing,
+            &returned_metrics,
+        );
+        assert!(token_causes.contains(&DiagnosticsLikelyCause::AuthMissing));
+        assert!(token_causes.contains(&DiagnosticsLikelyCause::ManifestMismatch));
     }
 
     #[test]

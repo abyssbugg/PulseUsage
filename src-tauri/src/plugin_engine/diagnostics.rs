@@ -215,6 +215,18 @@ pub(crate) fn redact_diagnostic_text(text: &str) -> String {
     {
         result = api_re.replace_all(&result, "[REDACTED]").to_string();
     }
+    if let Ok(common_token_re) = regex_lite::Regex::new(
+        r"\b(?:gh[pousr]_[A-Za-z0-9_]{8,}|xox[baprs]-[A-Za-z0-9-]{8,}|ya29\.[A-Za-z0-9._-]{8,}|sgamp_[A-Za-z0-9_-]{8,})\b",
+    ) {
+        result = common_token_re
+            .replace_all(&result, "[REDACTED]")
+            .to_string();
+    }
+    if let Ok(secret_kv_re) = regex_lite::Regex::new(
+        r#"(?i)\b(?:api[-_]?key|access[-_]?token|refresh[-_]?token|id[-_]?token|session[-_]?token|token|secret|password|credential)\s*[:=]\s*["']?[^\s"',)&]+"#,
+    ) {
+        result = secret_kv_re.replace_all(&result, "[REDACTED]").to_string();
+    }
     if let Ok(jwt_re) =
         regex_lite::Regex::new(r"\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b")
     {
@@ -233,9 +245,18 @@ pub(crate) fn redact_diagnostic_text(text: &str) -> String {
     if let Ok(url_re) = regex_lite::Regex::new(r#"https?://[^\s"',)]+"#) {
         result = url_re.replace_all(&result, "[URL]").to_string();
     }
-    if let Ok(path_re) =
-        regex_lite::Regex::new(r#"/(?:Users|home|private|var|tmp|Applications)/[^\s"',)]+"#)
-    {
+    if let Ok(windows_drive_re) = regex_lite::Regex::new(r#"[A-Za-z]:\\[^\s"',)]+"#) {
+        result = windows_drive_re.replace_all(&result, "[PATH]").to_string();
+    }
+    if let Ok(unc_re) = regex_lite::Regex::new(r#"\\\\[^\s\\"',)]+\\[^\s"',)]+"#) {
+        result = unc_re.replace_all(&result, "[PATH]").to_string();
+    }
+    if let Ok(home_path_re) = regex_lite::Regex::new(r#"~/[^\s"',)]+"#) {
+        result = home_path_re.replace_all(&result, "[PATH]").to_string();
+    }
+    if let Ok(path_re) = regex_lite::Regex::new(
+        r#"/(?:Users|home|private|var|tmp|Applications|opt|Library|System|Volumes)/[^\s"',)]+"#,
+    ) {
         result = path_re.replace_all(&result, "[PATH]").to_string();
     }
 
@@ -272,5 +293,33 @@ mod tests {
             normalize_metric_classification(Some("unclassified")),
             MetricClassification::Unknown
         );
+    }
+
+    #[test]
+    fn redacts_urls_and_paths_without_quote_terminators() {
+        let raw_url = "https://example.invalid/path?token=abc";
+        let raw_unix_path = "/Users/sample/.config/app";
+        let raw_opt_path = "/opt/pulseusage/cache.json";
+        let raw_home_path = "~/.config/pulseusage/state.json";
+        let raw_token_param = "refresh_token=abc1234567890";
+        let raw_api_key_param = "apiKey=key_value_1234567890";
+        let raw_github_token = "ghp_abcdefghijklmnopqrstuvwxyz";
+        let raw_windows_path = r"C:\Users\sample\AppData\Local\PulseUsage";
+        let raw_unc_path = r"\\server\share\pulseusage";
+        let redacted = redact_diagnostic_text(&format!(
+            "Failed at {raw_url} {raw_unix_path} {raw_opt_path} {raw_home_path} {raw_token_param} {raw_api_key_param} {raw_github_token} {raw_windows_path} {raw_unc_path}"
+        ));
+
+        assert!(!redacted.contains(raw_url));
+        assert!(!redacted.contains(raw_unix_path));
+        assert!(!redacted.contains(raw_opt_path));
+        assert!(!redacted.contains(raw_home_path));
+        assert!(!redacted.contains(raw_token_param));
+        assert!(!redacted.contains(raw_api_key_param));
+        assert!(!redacted.contains(raw_github_token));
+        assert!(!redacted.contains(raw_windows_path));
+        assert!(!redacted.contains(raw_unc_path));
+        assert!(redacted.contains("[URL]"));
+        assert!(redacted.contains("[PATH]"));
     }
 }

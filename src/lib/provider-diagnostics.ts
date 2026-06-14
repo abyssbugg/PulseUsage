@@ -50,6 +50,14 @@ export function redactDiagnosticText(text: string): string {
     "[REDACTED]"
   )
   result = result.replace(
+    /\b(?:gh[pousr]_[A-Za-z0-9_]{8,}|xox[baprs]-[A-Za-z0-9-]{8,}|ya29\.[A-Za-z0-9._-]{8,}|sgamp_[A-Za-z0-9_-]{8,})\b/g,
+    "[REDACTED]"
+  )
+  result = result.replace(
+    /\b(?:api[-_]?key|access[-_]?token|refresh[-_]?token|id[-_]?token|session[-_]?token|token|secret|password|credential)\s*[:=]\s*["']?[^\s"',)&]+/gi,
+    "[REDACTED]"
+  )
+  result = result.replace(
     /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g,
     "[REDACTED]"
   )
@@ -58,9 +66,12 @@ export function redactDiagnosticText(text: string): string {
     /\b(?:user|account|org|organization|session)[_-]?id\s*[:=]\s*[A-Za-z0-9._-]+\b/gi,
     (match) => match.replace(/[:=]\s*[A-Za-z0-9._-]+$/, "=[REDACTED]")
   )
+  result = result.replace(/[A-Za-z]:\\[^\s"',)]+/g, "[PATH]")
+  result = result.replace(/\\\\[^\s\\"',)]+\\[^\s"',)]+/g, "[PATH]")
   result = result.replace(/https?:\/\/[^\s"',)]+/gi, "[URL]")
+  result = result.replace(/~\/[^\s\"',)]+/g, "[PATH]")
   result = result.replace(
-    /\/(?:Users|home|private|var|tmp|Applications)\/[^\s"',)]+/g,
+    /\/(?:Users|home|private|var|tmp|Applications|opt|Library|System|Volumes)\/[^\s\"',)]+/g,
     "[PATH]"
   )
 
@@ -69,10 +80,11 @@ export function redactDiagnosticText(text: string): string {
 
 export function buildProviderDiagnostics(plugin: PluginDisplayState): ProviderDiagnostics {
   const runtime = plugin.data?.diagnostics
+  const hasRuntimeData = Boolean(plugin.data)
   const hostFacts = { ...EMPTY_HOST_FACTS, ...runtime?.hostFacts }
   const manifestMetrics = buildManifestMetrics(plugin)
   const returnedMetrics = buildReturnedMetrics(plugin.data?.lines ?? [])
-  const missingMetrics = buildMissingMetrics(manifestMetrics, returnedMetrics)
+  const missingMetrics = hasRuntimeData ? buildMissingMetrics(manifestMetrics, returnedMetrics) : []
   const runtimeError = errorFromLines(plugin.data?.lines ?? [])
   const rawError = plugin.error ?? runtime?.lastError ?? runtimeError
   const lastError = rawError ? redactDiagnosticText(rawError) : null
@@ -89,7 +101,7 @@ export function buildProviderDiagnostics(plugin: PluginDisplayState): ProviderDi
     dataSourceReachable,
     missingMetrics,
     returnedMetrics,
-    hasRuntimeData: Boolean(plugin.data),
+    hasRuntimeData,
   })
   const healthSummary = deriveHealthSummary({
     runtimeHealth: runtime?.healthSummary,
@@ -99,7 +111,7 @@ export function buildProviderDiagnostics(plugin: PluginDisplayState): ProviderDi
   })
 
   return {
-    providerLoaded: true,
+    providerLoaded: runtime?.providerLoaded ?? hasRuntimeData,
     providerVersion: runtime?.providerVersion ?? plugin.meta.version ?? null,
     authDetected,
     dataSourceReachable,
@@ -140,10 +152,11 @@ function buildMissingMetrics(
 }
 
 function errorFromLines(lines: MetricLine[]): string | null {
-  if (lines.length !== 1) return null
-  const line = lines[0]
-  if (line.type === "badge" && line.label === "Error") {
-    return line.text || "Couldn't update data. Try again?"
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    const line = lines[i]
+    if (line.type === "badge" && line.label === "Error") {
+      return line.text || "Couldn't update data. Try again?"
+    }
   }
   return null
 }
@@ -193,6 +206,7 @@ function deriveHealthSummary({
 }): DiagnosticsHealth {
   if (parserExecutionStatus === "failed") return "error"
   if (runtimeHealth === "error") return "error"
+  if (parserExecutionStatus === "notRun") return "unknown"
   if (
     runtimeHealth === "warning" ||
     hostFacts.authStatusResponsesSeen > 0 ||
@@ -200,7 +214,6 @@ function deriveHealthSummary({
   ) {
     return "warning"
   }
-  if (parserExecutionStatus === "notRun") return "unknown"
   return "ok"
 }
 
@@ -235,11 +248,15 @@ function deriveLikelyCauses({
     causes.add("authMissing")
   }
   if (dataSourceReachable === "unreachable") causes.add("dataSourceUnreachable")
-  if (missingMetrics.length > 0) causes.add("manifestMismatch")
+  if (
+    hasRuntimeData &&
+    missingMetrics.some((metric) => metric.classification === "required")
+  ) {
+    causes.add("manifestMismatch")
+  }
   if (hasRuntimeData && returnedMetrics.length === 0 && !lastError) {
     causes.add("noMetricsReturned")
   }
-  if (causes.size === 0 && parserExecutionStatus === "failed") causes.add("unknown")
 
   return [...causes]
 }

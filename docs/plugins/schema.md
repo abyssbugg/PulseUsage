@@ -269,9 +269,9 @@ A complete, working plugin that fetches data and displays all three line types.
   "entry": "plugin.js",
   "icon": "icon.svg",
   "lines": [
-    { "type": "badge", "label": "Status", "scope": "overview" },
-    { "type": "progress", "label": "Usage", "scope": "overview", "primary": true },
-    { "type": "text", "label": "Fetched at", "scope": "detail" }
+    { "type": "badge", "label": "Status", "scope": "overview", "classification": "optional" },
+    { "type": "progress", "label": "Usage", "scope": "overview", "classification": "required", "primaryOrder": 1 },
+    { "type": "text", "label": "Fetched at", "scope": "detail", "classification": "optional" }
   ]
 }
 ```

@@ -945,6 +945,49 @@ describe("ProviderCard", () => {
     expect(screen.getAllByText("Couldn't update data. Try again?").length).toBeGreaterThan(0)
     expect(screen.queryByRole("alert")).toBeNull()
   })
+  it("redacts sensitive plugin error text before rendering", () => {
+    const rawEmail = ["user", String.fromCharCode(64), "example.invalid"].join("")
+    const rawToken = ["token", "=", "abc1234567890"].join("")
+    const rawPath = ["/", "opt", "/", "pulseusage", "/cache.json"].join("")
+    const rawError = `Failed for ${rawEmail} with ${rawToken} at ${rawPath}`
+
+    render(
+      <ProviderCard
+        name="ColdErr"
+        displayMode="used"
+        error={rawError}
+        onRetry={() => {}}
+      />
+    )
+
+    expect(screen.queryByText(rawEmail)).toBeNull()
+    expect(screen.queryByText(rawToken)).toBeNull()
+    expect(screen.queryByText(rawPath)).toBeNull()
+    expect(screen.getByText(/Failed for/)).toBeInTheDocument()
+    expect(screen.getByText(/\[REDACTED\]/)).toBeInTheDocument()
+    expect(screen.getByText(/\[PATH\]/)).toBeInTheDocument()
+  })
+
+  it("redacts Error badge text before rendering stale plugin output", () => {
+    const rawToken = ["api", "Key", "=", "key_value_1234567890"].join("")
+    const rawPath = ["~", "/", ".config", "/", "pulseusage", "/state.json"].join("")
+
+    render(
+      <ProviderCard
+        name="StaleErr"
+        displayMode="used"
+        lastUpdatedAt={Date.now() - 60_000}
+        lines={[
+          { type: "badge", label: "Error", text: `Failed with ${rawToken} at ${rawPath}` },
+        ]}
+      />
+    )
+
+    expect(screen.queryByText(rawToken)).toBeNull()
+    expect(screen.queryByText(rawPath)).toBeNull()
+    expect(screen.getByText(/\[REDACTED\]/)).toBeInTheDocument()
+    expect(screen.getByText(/\[PATH\]/)).toBeInTheDocument()
+  })
 
   it("shows full PluginError when errored without stale data", () => {
     render(

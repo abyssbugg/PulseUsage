@@ -146,7 +146,6 @@ describe("validateProviderMetadata", () => {
         "empty-provider-name",
         "malformed-version",
         "unsafe-entry-path",
-        "missing-entry-file",
         "invalid-icon-extension",
         "missing-icon-file",
         "missing-provider-docs",
@@ -156,6 +155,26 @@ describe("validateProviderMetadata", () => {
         "invalid-link-url",
       ])
     )
+  })
+
+  test("does not report missing files for unsafe relative paths", async () => {
+    const rootDir = makeRoot()
+    writeProvider(rootDir, "bad-provider", {
+      manifest: {
+        schemaVersion: 1,
+        id: "bad-provider",
+        name: "Bad Provider",
+        version: "0.0.1",
+        entry: "../outside.js",
+        icon: "icon.svg",
+        lines: [{ type: "progress", label: "Usage", scope: "overview", primaryOrder: 1, classification: "required" }],
+      },
+    })
+
+    const result = await validateProviderMetadata({ rootDir })
+
+    expect(codes(result)).toContain("unsafe-entry-path")
+    expect(codes(result)).not.toContain("missing-entry-file")
   })
 
   test("detects docs drift and missing required metric fixture coverage when classification exists", async () => {
