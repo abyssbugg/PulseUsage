@@ -188,9 +188,15 @@ fn keychain_find_generic_password_args_for_account(service: &str, account: &str)
 }
 
 fn keychain_add_generic_password_args(service: &str, value: &str) -> Vec<OsString> {
+    // macOS 27 (Build 26A5368g+) requires -a account for security add-generic-password.
+    // Use the current macOS user as the default account, matching the read path's
+    // fallback when no account is specified. This keeps service-only writes working.
+    let account = current_macos_keychain_account();
     vec![
         OsString::from("add-generic-password"),
         OsString::from("-U"),
+        OsString::from("-a"),
+        OsString::from(account),
         OsString::from("-s"),
         OsString::from(service),
         OsString::from("-w"),
@@ -639,7 +645,13 @@ pub(crate) fn inject_host_api_with_deadline<'js>(
     let host = Object::new(ctx.clone())?;
     inject_log(ctx, &host, plugin_id)?;
     inject_fs(ctx, &host, diagnostics_recorder.clone())?;
-    inject_plist(ctx, &host, diagnostics_recorder.clone())?;
+    // plist.read is gated to plugins that need it (warp reads Warp-Stable.plist).
+    // Only inject the plist capability for allowed plugin IDs to prevent unrestricted
+    // filesystem reads of arbitrary plist files.
+    const PLIST_ALLOWED: &[&str] = &["warp", "factory", "claude"];
+    if PLIST_ALLOWED.contains(&plugin_id) {
+        inject_plist(ctx, &host, diagnostics_recorder.clone())?;
+    }
     inject_crypto(ctx, &host)?;
     inject_env(ctx, &host, plugin_id, diagnostics_recorder.clone())?;
     inject_http(
@@ -650,7 +662,7 @@ pub(crate) fn inject_host_api_with_deadline<'js>(
         diagnostics_recorder.clone(),
     )?;
     inject_keychain(ctx, &host, plugin_id, diagnostics_recorder.clone())?;
-    inject_sqlite(ctx, &host, diagnostics_recorder.clone())?;
+    inject_sqlite(ctx, &host, plugin_id, diagnostics_recorder.clone())?;
     inject_ls(ctx, &host, plugin_id, diagnostics_recorder.clone())?;
     inject_ccusage(ctx, &host, plugin_id, deadline, diagnostics_recorder)?;
 
@@ -968,6 +980,19 @@ fn inject_http<'js>(
                 }
 
                 if req.dangerously_ignore_tls.unwrap_or(false) {
+                    let url = &req.url;
+                    let is_localhost = url
+                        .strip_prefix("https://")
+                        .or_else(|| url.strip_prefix("http://"))
+                        .and_then(|rest| rest.split(|c| c == '/' || c == ':').next())
+                        .map(|host| host == "127.0.0.1" || host == "localhost" || host == "::1")
+                        .unwrap_or(false);
+                    if !is_localhost {
+                        return Err(Exception::throw_message(
+                            &ctx_inner,
+                            "dangerouslyIgnoreTls is only permitted for localhost (127.0.0.1, localhost, ::1)",
+                        ));
+                    }
                     builder = builder.danger_accept_invalid_certs(true);
                 }
                 let client = builder
@@ -2885,6 +2910,7 @@ fn inject_keychain<'js>(
 fn inject_sqlite<'js>(
     ctx: &Ctx<'js>,
     host: &Object<'js>,
+    plugin_id: &str,
     diagnostics_recorder: ProbeDiagnosticsRecorder,
 ) -> rquickjs::Result<()> {
     let sqlite_obj = Object::new(ctx.clone())?;
@@ -2953,8 +2979,12 @@ fn inject_sqlite<'js>(
         )?,
     )?;
 
-    sqlite_obj.set(
-        "exec",
+    // sqlite.exec (write capability) is gated to plugins that need it.
+    // Only cursor writes to its state DB; all others get read-only query.
+    const SQLITE_WRITE_ALLOWED: &[&str] = &["cursor"];
+    if SQLITE_WRITE_ALLOWED.contains(&plugin_id) {
+        sqlite_obj.set(
+            "exec",
         Function::new(
             ctx.clone(),
             move |ctx_inner: Ctx<'_>, db_path: String, sql: String| -> rquickjs::Result<()> {
@@ -2984,6 +3014,7 @@ fn inject_sqlite<'js>(
             },
         )?,
     )?;
+    }
 
     host.set("sqlite", sqlite_obj)?;
     Ok(())
@@ -3567,17 +3598,24 @@ mod tests {
             .map(|value| value.to_string_lossy().into_owned())
             .collect();
 
-        assert_eq!(
-            rendered,
-            vec![
-                "add-generic-password",
-                "-U",
-                "-s",
-                "Claude Code-credentials",
-                "-w",
-                "secret-value",
-            ]
-        );
+        // macOS 27 requires -a account for add-generic-password. The service-only
+        // path now includes the current user's account via current_macos_keychain_account().
+        // Verify the -a flag and account value are present alongside service and value.
+        assert!(rendered.contains(&"add-generic-password".to_string()));
+        assert!(rendered.contains(&"-U".to_string()));
+        assert!(rendered.contains(&"-a".to_string()));
+        assert!(rendered.contains(&"-s".to_string()));
+        assert!(rendered.contains(&"Claude Code-credentials".to_string()));
+        assert!(rendered.contains(&"-w".to_string()));
+        assert!(rendered.contains(&"secret-value".to_string()));
+        // The account is the current macOS user — verify it's a non-empty string.
+        let account = rendered
+            .iter()
+            .position(|v| v == "-a")
+            .map(|i| rendered.get(i + 1).cloned())
+            .flatten()
+            .unwrap_or_default();
+        assert!(!account.is_empty(), "account must not be empty");
     }
 
     #[test]
