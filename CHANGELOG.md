@@ -1,5 +1,34 @@
 # Changelog
 
+## v0.6.28
+
+### New Features
+- Add provider diagnostics backend, UI, and metadata validation (PR #14)
+- Add provider metric classifications with evidence-backed docs
+- Enforce provider metadata validation in CI (default mode)
+
+### Bug Fixes
+- Fix keychain `readGenericPassword` signature mismatch that broke Copilot, Cursor, Claude, Codex, and Factory plugins on every launch (`TypeError: Error calling function with 1 argument(s) while 2 where expected`). Host binding now uses `Opt<String>` for the optional account parameter.
+- Detect parser failure when any `Error` line exists (not just single-line outputs)
+- Use token-boundary matching for auth keyword detection in diagnostics
+- Gate `ManifestMismatch` on required-metric misses only (not optional/planDependent)
+- Derive `providerLoaded` from runtime data instead of hardcoding `true`
+- URL/path redaction regexes no longer require trailing quote (prevents leaks)
+- Hardened keychain auth-read diagnostics to only count credential-bearing reads
+- Early return in `validateRelativeFile` after unsafe path error (no duplicate error)
+
+### Chores
+- Bump version to 0.6.28
+- Add provider health documentation
+- Add v0.6.28 release readiness report
+- Split `validate-provider-metadata.mjs` into rules + validator (under 400 LOC each)
+- Add contract test for `readGenericPassword` 1-arg calling pattern
+- Document keychain API signatures in `docs/plugins/schema.md`
+
+### Known Limitations
+- Perplexity `Agentic Research` metric remains intentionally unclassified (no evidence); strict-mode validator fails by design until evidence is gathered (v0.7 follow-up).
+- `writeGenericPassword` service-only writes fail on macOS 27 where `security add-generic-password` now requires `-a account`. Pre-existing issue unmasked by the keychain read fix; copilot probe succeeds via gh CLI fallback. macOS 27 compatibility follow-up.
+
 ## v0.6.26
 
 ### New Features
