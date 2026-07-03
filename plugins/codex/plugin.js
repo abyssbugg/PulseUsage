@@ -303,20 +303,66 @@
     return ctx.fmt.planLabel(rawPlan) || null
   }
 
-  function getResetsAtIso(ctx, nowSec, window) {
+  function getResetsAtMs(nowSec, window) {
     if (!window) return null
     if (typeof window.reset_at === "number") {
-      return ctx.util.toIso(window.reset_at)
+      return window.reset_at * 1000
     }
     if (typeof window.reset_after_seconds === "number") {
-      return ctx.util.toIso(nowSec + window.reset_after_seconds)
+      return (nowSec + window.reset_after_seconds) * 1000
     }
     return null
+  }
+
+  function getResetsAtIso(ctx, nowSec, window) {
+    var resetsAtMs = getResetsAtMs(nowSec, window)
+    if (resetsAtMs === null) return null
+    return ctx.util.toIso(Math.floor(resetsAtMs / 1000))
   }
 
   // Period durations in milliseconds
   var PERIOD_SESSION_MS = 5 * 60 * 60 * 1000    // 5 hours
   var PERIOD_WEEKLY_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
+
+  function readPeriodMs(window, fallbackMs) {
+    if (!window || typeof window.limit_window_seconds !== "number") return fallbackMs
+    return window.limit_window_seconds * 1000
+  }
+
+  function minimumElapsedSec(periodDurationSec) {
+    return Math.max(60, periodDurationSec * 0.01)
+  }
+
+  function isFreshUsageWindow(window, nowMs, periodDurationMs) {
+    if (periodDurationMs <= 0) return false
+    var nowSec = Math.floor(nowMs / 1000)
+    var resetsAtMs = getResetsAtMs(nowSec, window)
+    if (resetsAtMs === null || nowMs >= resetsAtMs) return false
+    var periodDurationSec = periodDurationMs / 1000
+    var remainingSec = (resetsAtMs - nowMs) / 1000
+    return remainingSec >= periodDurationSec - minimumElapsedSec(periodDurationSec)
+  }
+
+  function normalizedUsedPercent(used, window, nowMs, periodDurationMs) {
+    if (!isFreshUsageWindow(window, nowMs, periodDurationMs) || used > 1) {
+      return used
+    }
+    return 0
+  }
+
+  function buildPercentProgressLine(ctx, label, usedPercent, window, nowSec, defaultPeriodMs) {
+    var periodMs = readPeriodMs(window, defaultPeriodMs)
+    var nowMs = nowSec * 1000
+    var used = normalizedUsedPercent(usedPercent, window, nowMs, periodMs)
+    return ctx.line.progress({
+      label: label,
+      used: used,
+      limit: 100,
+      format: { kind: "percent" },
+      resetsAt: getResetsAtIso(ctx, nowSec, window),
+      periodDurationMs: periodMs,
+    })
+  }
 
   function queryTokenUsage(ctx) {
     if (!ctx.host.ccusage || typeof ctx.host.ccusage.query !== "function") {
@@ -642,46 +688,32 @@
       const headerSecondary = readPercent(resp.headers["x-codex-secondary-used-percent"])
 
       if (headerPrimary !== null) {
-        lines.push(ctx.line.progress({
-          label: "Session",
-          used: headerPrimary,
-          limit: 100,
-          format: { kind: "percent" },
-          resetsAt: getResetsAtIso(ctx, nowSec, primaryWindow),
-          periodDurationMs: PERIOD_SESSION_MS
-        }))
+        lines.push(buildPercentProgressLine(ctx, "Session", headerPrimary, primaryWindow, nowSec, PERIOD_SESSION_MS))
       }
       if (headerSecondary !== null) {
-        lines.push(ctx.line.progress({
-          label: "Weekly",
-          used: headerSecondary,
-          limit: 100,
-          format: { kind: "percent" },
-          resetsAt: getResetsAtIso(ctx, nowSec, secondaryWindow),
-          periodDurationMs: PERIOD_WEEKLY_MS
-        }))
+        lines.push(buildPercentProgressLine(ctx, "Weekly", headerSecondary, secondaryWindow, nowSec, PERIOD_WEEKLY_MS))
       }
 
       if (lines.length === 0 && data.rate_limit) {
         if (data.rate_limit.primary_window && typeof data.rate_limit.primary_window.used_percent === "number") {
-          lines.push(ctx.line.progress({
-            label: "Session",
-            used: data.rate_limit.primary_window.used_percent,
-            limit: 100,
-            format: { kind: "percent" },
-            resetsAt: getResetsAtIso(ctx, nowSec, primaryWindow),
-            periodDurationMs: PERIOD_SESSION_MS
-          }))
+          lines.push(buildPercentProgressLine(
+            ctx,
+            "Session",
+            data.rate_limit.primary_window.used_percent,
+            primaryWindow,
+            nowSec,
+            PERIOD_SESSION_MS
+          ))
         }
         if (data.rate_limit.secondary_window && typeof data.rate_limit.secondary_window.used_percent === "number") {
-          lines.push(ctx.line.progress({
-            label: "Weekly",
-            used: data.rate_limit.secondary_window.used_percent,
-            limit: 100,
-            format: { kind: "percent" },
-            resetsAt: getResetsAtIso(ctx, nowSec, secondaryWindow),
-            periodDurationMs: PERIOD_WEEKLY_MS
-          }))
+          lines.push(buildPercentProgressLine(
+            ctx,
+            "Weekly",
+            data.rate_limit.secondary_window.used_percent,
+            secondaryWindow,
+            nowSec,
+            PERIOD_WEEKLY_MS
+          ))
         }
       }
 
@@ -693,28 +725,24 @@
           if (!shortName) shortName = name || "Model"
           const rl = entry.rate_limit
           if (rl.primary_window && typeof rl.primary_window.used_percent === "number") {
-            lines.push(ctx.line.progress({
-              label: shortName,
-              used: rl.primary_window.used_percent,
-              limit: 100,
-              format: { kind: "percent" },
-              resetsAt: getResetsAtIso(ctx, nowSec, rl.primary_window),
-              periodDurationMs: typeof rl.primary_window.limit_window_seconds === "number"
-                ? rl.primary_window.limit_window_seconds * 1000
-                : PERIOD_SESSION_MS
-            }))
+            lines.push(buildPercentProgressLine(
+              ctx,
+              shortName,
+              rl.primary_window.used_percent,
+              rl.primary_window,
+              nowSec,
+              PERIOD_SESSION_MS
+            ))
           }
           if (rl.secondary_window && typeof rl.secondary_window.used_percent === "number") {
-            lines.push(ctx.line.progress({
-              label: shortName + " Weekly",
-              used: rl.secondary_window.used_percent,
-              limit: 100,
-              format: { kind: "percent" },
-              resetsAt: getResetsAtIso(ctx, nowSec, rl.secondary_window),
-              periodDurationMs: typeof rl.secondary_window.limit_window_seconds === "number"
-                ? rl.secondary_window.limit_window_seconds * 1000
-                : PERIOD_WEEKLY_MS
-            }))
+            lines.push(buildPercentProgressLine(
+              ctx,
+              shortName + " Weekly",
+              rl.secondary_window.used_percent,
+              rl.secondary_window,
+              nowSec,
+              PERIOD_WEEKLY_MS
+            ))
           }
         }
       }
@@ -722,14 +750,7 @@
       if (reviewWindow) {
         const used = reviewWindow.used_percent
         if (typeof used === "number") {
-          lines.push(ctx.line.progress({
-            label: "Reviews",
-            used: used,
-            limit: 100,
-            format: { kind: "percent" },
-            resetsAt: getResetsAtIso(ctx, nowSec, reviewWindow),
-            periodDurationMs: PERIOD_WEEKLY_MS // code_review_rate_limit is a 7-day window
-          }))
+          lines.push(buildPercentProgressLine(ctx, "Reviews", used, reviewWindow, nowSec, PERIOD_WEEKLY_MS))
         }
       }
 

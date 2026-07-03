@@ -255,6 +255,122 @@ describe("codex plugin", () => {
     expect(credits.used).toBe(900)
   })
 
+  describe("fresh rate-limit windows", () => {
+    const SESSION_SEC = 5 * 60 * 60
+
+    function mockFreshSessionUsage(ctx, opts) {
+      const now = opts.now ?? 1_700_000_000_000
+      const nowSpy = vi.spyOn(Date, "now").mockReturnValue(now)
+      const nowSec = Math.floor(now / 1000)
+      ctx.host.fs.writeText("~/.codex/auth.json", JSON.stringify({
+        tokens: { access_token: "token" },
+        last_refresh: new Date().toISOString(),
+      }))
+      ctx.host.http.request.mockReturnValue({
+        status: 200,
+        headers: opts.headers ?? {},
+        bodyText: JSON.stringify(opts.body ?? {
+          rate_limit: {
+            primary_window: {
+              used_percent: opts.usedPercent ?? 1,
+              reset_after_seconds: opts.resetAfterSeconds ?? (SESSION_SEC - 60),
+              limit_window_seconds: SESSION_SEC,
+            },
+          },
+        }),
+      })
+      return { nowSpy, nowSec }
+    }
+
+    it("normalizes fresh session 1% body reading to 0%", async () => {
+      const ctx = makeCtx()
+      const { nowSpy } = mockFreshSessionUsage(ctx, {})
+      const plugin = await loadPlugin()
+      const result = plugin.probe(ctx)
+      const session = result.lines.find((line) => line.label === "Session")
+      expect(session).toBeTruthy()
+      expect(session.used).toBe(0)
+      nowSpy.mockRestore()
+    })
+
+    it("normalizes fresh session 1% header reading to 0%", async () => {
+      const ctx = makeCtx()
+      const { nowSpy } = mockFreshSessionUsage(ctx, {
+        headers: { "x-codex-primary-used-percent": "1" },
+        body: {
+          rate_limit: {
+            primary_window: {
+              used_percent: 1,
+              reset_after_seconds: SESSION_SEC - 60,
+              limit_window_seconds: SESSION_SEC,
+            },
+          },
+        },
+      })
+      const plugin = await loadPlugin()
+      const result = plugin.probe(ctx)
+      const session = result.lines.find((line) => line.label === "Session")
+      expect(session).toBeTruthy()
+      expect(session.used).toBe(0)
+      nowSpy.mockRestore()
+    })
+
+    it("keeps 1% when the session window has materially started", async () => {
+      const ctx = makeCtx()
+      const { nowSpy } = mockFreshSessionUsage(ctx, {
+        resetAfterSeconds: SESSION_SEC - 181,
+      })
+      const plugin = await loadPlugin()
+      const result = plugin.probe(ctx)
+      const session = result.lines.find((line) => line.label === "Session")
+      expect(session).toBeTruthy()
+      expect(session.used).toBe(1)
+      nowSpy.mockRestore()
+    })
+
+    it("keeps fresh-window readings above 1% unchanged", async () => {
+      const ctx = makeCtx()
+      const { nowSpy } = mockFreshSessionUsage(ctx, { usedPercent: 2 })
+      const plugin = await loadPlugin()
+      const result = plugin.probe(ctx)
+      const session = result.lines.find((line) => line.label === "Session")
+      expect(session).toBeTruthy()
+      expect(session.used).toBe(2)
+      nowSpy.mockRestore()
+    })
+
+    it("normalizes fresh weekly 1% reading to 0%", async () => {
+      const ctx = makeCtx()
+      const weeklySec = 7 * 24 * 60 * 60
+      const now = 1_700_000_000_000
+      const nowSpy = vi.spyOn(Date, "now").mockReturnValue(now)
+      ctx.host.fs.writeText("~/.codex/auth.json", JSON.stringify({
+        tokens: { access_token: "token" },
+        last_refresh: new Date().toISOString(),
+      }))
+      ctx.host.http.request.mockReturnValue({
+        status: 200,
+        headers: {},
+        bodyText: JSON.stringify({
+          rate_limit: {
+            primary_window: { used_percent: 10, reset_after_seconds: 3600, limit_window_seconds: SESSION_SEC },
+            secondary_window: {
+              used_percent: 1,
+              reset_after_seconds: weeklySec - 60,
+              limit_window_seconds: weeklySec,
+            },
+          },
+        }),
+      })
+      const plugin = await loadPlugin()
+      const result = plugin.probe(ctx)
+      const weekly = result.lines.find((line) => line.label === "Weekly")
+      expect(weekly).toBeTruthy()
+      expect(weekly.used).toBe(0)
+      nowSpy.mockRestore()
+    })
+  })
+
   it("uses zero credits from the response body when the account has no credits", async () => {
     const ctx = makeCtx()
     ctx.host.fs.writeText("~/.codex/auth.json", JSON.stringify({
