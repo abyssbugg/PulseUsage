@@ -12,7 +12,9 @@ use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::{Mutex, OnceLock};
-use std::time::{Duration, Instant};
+use std::time::Duration;
+#[cfg(test)]
+use std::time::Instant;
 
 const WHITELISTED_ENV_VARS: [&str; 16] = [
     "CODEX_HOME",
@@ -32,7 +34,6 @@ const WHITELISTED_ENV_VARS: [&str; 16] = [
     "SYNTHETIC_API_KEY",
     "PI_CODING_AGENT_DIR",
 ];
-const MIN_BLOCKING_TIMEOUT: Duration = Duration::from_millis(1);
 
 fn is_credential_env_var(name: &str) -> bool {
     let upper = name.to_ascii_uppercase();
@@ -42,49 +43,6 @@ fn is_credential_env_var(name: &str) -> bool {
         || upper.contains("SECRET")
         || upper.contains("PASSWORD")
 }
-
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct ProbeDeadline {
-    expires_at: Option<Instant>,
-}
-
-impl ProbeDeadline {
-    #[cfg(test)]
-    pub(crate) fn none() -> Self {
-        Self { expires_at: None }
-    }
-
-    pub(crate) fn at(expires_at: Instant) -> Self {
-        Self {
-            expires_at: Some(expires_at),
-        }
-    }
-
-    pub(crate) fn has_elapsed(self) -> bool {
-        self.expires_at
-            .map(|expires_at| Instant::now() >= expires_at)
-            .unwrap_or(false)
-    }
-
-    fn clamp_duration(self, requested: Duration) -> Option<Duration> {
-        let Some(expires_at) = self.expires_at else {
-            return Some(requested);
-        };
-        let remaining = expires_at
-            .checked_duration_since(Instant::now())
-            .filter(|remaining| *remaining >= MIN_BLOCKING_TIMEOUT)?;
-        Some(requested.min(remaining))
-    }
-}
-
-fn log_probe_deadline_skip(plugin_id: &str, operation: &str) {
-    log::warn!(
-        "[plugin:{}] {} skipped: probe timed out",
-        plugin_id,
-        operation
-    );
-}
-
 
 fn last_non_empty_trimmed_line(text: &str) -> Option<String> {
     text.lines()
@@ -401,7 +359,7 @@ pub(crate) fn inject_host_api<'js>(
         plugin_id,
         app_data_dir,
         app_version,
-        ProbeDeadline::none(),
+        crate::plugin_engine::shared::ProbeDeadline::none(),
         ProbeDiagnosticsRecorder::default(),
     )
 }
@@ -411,7 +369,7 @@ pub(crate) fn inject_host_api_with_deadline<'js>(
     plugin_id: &str,
     app_data_dir: &PathBuf,
     app_version: &str,
-    deadline: ProbeDeadline,
+    deadline: crate::plugin_engine::shared::ProbeDeadline,
     diagnostics_recorder: ProbeDiagnosticsRecorder,
 ) -> rquickjs::Result<()> {
     let globals = ctx.globals();
@@ -712,7 +670,7 @@ fn inject_http<'js>(
     ctx: &Ctx<'js>,
     host: &Object<'js>,
     plugin_id: &str,
-    deadline: ProbeDeadline,
+    deadline: crate::plugin_engine::shared::ProbeDeadline,
     diagnostics_recorder: ProbeDiagnosticsRecorder,
 ) -> rquickjs::Result<()> {
     let http_obj = Object::new(ctx.clone())?;
@@ -2071,7 +2029,7 @@ fn run_ccusage_with_runner(
         opts,
         provider,
         plugin_id,
-        ProbeDeadline::none(),
+        crate::plugin_engine::shared::ProbeDeadline::none(),
     )
 }
 
@@ -2081,7 +2039,7 @@ fn run_ccusage_with_runner_deadline(
     opts: &CcusageQueryOpts,
     provider: CcusageProvider,
     plugin_id: &str,
-    deadline: ProbeDeadline,
+    deadline: crate::plugin_engine::shared::ProbeDeadline,
 ) -> CcusageRunnerResult {
     if deadline.has_elapsed() {
         log::warn!("[plugin:{}] ccusage skipped: probe timed out", plugin_id);
@@ -2090,7 +2048,7 @@ fn run_ccusage_with_runner_deadline(
 
     let Some(current_timeout) = deadline.clamp_duration(Duration::from_secs(CCUSAGE_TIMEOUT_SECS))
     else {
-        log_probe_deadline_skip(plugin_id, "ccusage");
+        crate::plugin_engine::shared::log_probe_deadline_skip(plugin_id, "ccusage");
         return CcusageRunnerResult::TimedOut;
     };
 
@@ -2109,7 +2067,7 @@ fn run_ccusage_with_runner_deadline(
             let Some(legacy_timeout) =
                 deadline.clamp_duration(Duration::from_secs(CCUSAGE_TIMEOUT_SECS))
             else {
-                log_probe_deadline_skip(plugin_id, "ccusage legacy fallback");
+                crate::plugin_engine::shared::log_probe_deadline_skip(plugin_id, "ccusage legacy fallback");
                 return CcusageRunnerResult::TimedOut;
             };
             run_ccusage_with_runner_timeout(
@@ -2319,7 +2277,7 @@ fn inject_ccusage<'js>(
     ctx: &Ctx<'js>,
     host: &Object<'js>,
     plugin_id: &str,
-    deadline: ProbeDeadline,
+    deadline: crate::plugin_engine::shared::ProbeDeadline,
     diagnostics_recorder: ProbeDiagnosticsRecorder,
 ) -> rquickjs::Result<()> {
     let ccusage_obj = Object::new(ctx.clone())?;
@@ -4473,7 +4431,7 @@ esac
 
     #[test]
     fn probe_deadline_clamps_host_timeout_to_remaining_budget() {
-        let deadline = ProbeDeadline::at(Instant::now() + Duration::from_millis(25));
+        let deadline = crate::plugin_engine::shared::ProbeDeadline::at(Instant::now() + Duration::from_millis(25));
         let clamped = deadline
             .clamp_duration(Duration::from_secs(10))
             .expect("remaining budget should produce a host timeout");
@@ -4490,7 +4448,7 @@ esac
 
     #[test]
     fn probe_deadline_does_not_extend_elapsed_budget() {
-        let deadline = ProbeDeadline::at(Instant::now());
+        let deadline = crate::plugin_engine::shared::ProbeDeadline::at(Instant::now());
 
         assert_eq!(deadline.clamp_duration(Duration::from_secs(10)), None);
     }
@@ -4501,7 +4459,9 @@ esac
         use std::io::Write;
         use std::os::unix::fs::PermissionsExt;
         use std::path::Path;
-        use std::time::{Duration, Instant};
+        use std::time::Duration;
+#[cfg(test)]
+use std::time::Instant;
 
         fn pid_exists(pid: i32) -> bool {
             unsafe { libc::kill(pid, 0) == 0 }
