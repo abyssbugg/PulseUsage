@@ -5,7 +5,7 @@ use aes_gcm::{
     aes::Aes256,
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
-use rquickjs::{Ctx, Exception, Function, Object};
+use rquickjs::{function::Opt, Ctx, Exception, Function, Object};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::ffi::{OsStr, OsString};
@@ -2592,7 +2592,7 @@ fn inject_keychain<'js>(
             ctx.clone(),
             move |ctx_inner: Ctx<'_>,
                   service: String,
-                  account: Option<String>|
+                  account: Opt<String>|
                   -> rquickjs::Result<String> {
                 if !cfg!(target_os = "macos") {
                     read_recorder.record_auth_read(false);
@@ -2601,7 +2601,7 @@ fn inject_keychain<'js>(
                         "keychain API is only supported on macOS",
                     ));
                 }
-                let account = account.and_then(|value| {
+                let account = account.0.and_then(|value| {
                     let trimmed = value.trim();
                     if trimmed.is_empty() {
                         None
@@ -3274,6 +3274,57 @@ mod tests {
                 .get("writeGenericPasswordForCurrentUser")
                 .expect("writeGenericPasswordForCurrentUser");
         });
+    }
+
+    /// Contract test: readGenericPassword must accept a single service argument
+    /// (omitting account). Plugins call `readGenericPassword(service)` without an
+    /// account, so the host binding must treat the account parameter as optional.
+    /// This test prevents regressions where rquickjs's strict arg count rejects
+    /// the 1-arg call pattern that production plugins depend on.
+    #[test]
+    fn keychain_read_generic_password_accepts_single_arg() {
+        let rt = Runtime::new().expect("runtime");
+        let ctx = Context::full(&rt).expect("context");
+        let err_msg = ctx.with(|ctx| -> String {
+            let app_data = std::env::temp_dir();
+            inject_host_api(&ctx, "test", &app_data, "0.0.0").expect("inject host api");
+            // Call readGenericPassword with ONE argument from JS, exactly as
+            // copilot/cursor/codex/factory/claude plugins do. On non-macOS this
+            // throws "keychain API is only supported on macOS" — that specific
+            // message proves the 1-arg call reached the host function body.
+            // An arg-count rejection would throw a different TypeError
+            // ("1 argument(s) while 2 where expected") and fail this test.
+            let result: rquickjs::Value = ctx
+                .eval(
+                    r#"
+                    (function() {
+                        try {
+                            __pulseusage_ctx.host.keychain.readGenericPassword("test-service");
+                            return "no-throw";
+                        } catch (e) { return String(e); }
+                    })()
+                    "#,
+                )
+                .expect("eval");
+            match result.into_string() {
+                Some(s) => s.to_string().unwrap_or_default(),
+                None => String::new(),
+            }
+        });
+        assert!(
+            err_msg.contains("keychain API is only supported on macOS")
+                || err_msg.contains("keychain item not found")
+                || err_msg.contains("no-throw"),
+            "1-arg readGenericPassword should reach the host body, got: {}",
+            err_msg
+        );
+        // The error "1 argument(s) while 2 where expected" would mean the binding
+        // regressed to requiring 2 args — that is exactly what this test guards.
+        assert!(
+            !err_msg.contains("argument(s) while"),
+            "readGenericPassword regressed to strict arg count: {}",
+            err_msg
+        );
     }
 
     #[test]

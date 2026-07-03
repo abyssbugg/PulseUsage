@@ -145,6 +145,36 @@ globalThis.__pulseusage_plugin = {
 }
 ```
 
+## Host API Reference
+
+`ctx.host` exposes sandboxed APIs. Keychain signatures:
+
+| Method | Signature | Behavior |
+|---|---|---|
+| `readGenericPassword(service)` | `(service: string) => string` | Read a generic password by service name only. Use when the item was written without an explicit account. |
+| `readGenericPassword(service, account)` | `(service: string, account: string) => string` | Read a generic password by service + account. Use when the item was written with a known account (e.g., Antigravity). |
+| `readGenericPasswordForCurrentUser(service)` | `(service: string) => string` | Read using the current macOS user's account. Use when the item was written via `writeGenericPasswordForCurrentUser`. |
+| `writeGenericPassword(service, value)` | `(service: string, value: string) => void` | Write a generic password by service name. |
+| `writeGenericPasswordForCurrentUser(service, value)` | `(service: string, value: string) => void` | Write using the current macOS user's account. |
+
+**Usage notes:**
+- `readGenericPassword`'s `account` parameter is **optional**. Omit it for service-only reads (the common case). Pass it only when the keychain item was written with a specific account.
+- All keychain APIs throw on non-macOS platforms. Guard with `typeof ctx.host.keychain.readGenericPassword === "function"` if optional.
+- Returned values are raw strings; parse JSON if the stored value is JSON-encoded.
+- Throws `keychain item not found` when the item does not exist — catch and fall back to the next auth source.
+
+**Examples:**
+```javascript
+// Service-only read (most plugins)
+const raw = ctx.host.keychain.readGenericPassword("my-service")
+
+// Service + account read (Antigravity pattern)
+const raw = ctx.host.keychain.readGenericPassword("my-service", "my-account")
+
+// Current-user read (Claude pattern)
+const value = ctx.host.keychain.readGenericPasswordForCurrentUser("my-service")
+```
+
 ## Output Schema
 
 `probe(ctx)` must return (or resolve to):
