@@ -21,17 +21,20 @@
       "type": "progress",
       "label": "Session",
       "scope": "overview",
+      "classification": "required",
       "primaryOrder": 1
     },
     {
       "type": "progress",
       "label": "Weekly",
-      "scope": "overview"
+      "scope": "overview",
+      "classification": "required"
     },
     {
       "type": "progress",
       "label": "Monthly",
-      "scope": "detail"
+      "scope": "detail",
+      "classification": "required"
     }
   ]
 }

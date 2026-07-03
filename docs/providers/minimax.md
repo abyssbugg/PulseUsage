@@ -86,6 +86,12 @@ Expected payload fields:
     - `limit`: `100`
   - `resetsAt`: derived from `end_time` or `remains_time`
 
+## Metric classification
+
+| Metric | Classification | Evidence |
+|---|---|---|
+| Session | Required | Provider docs define a single session line; tests cover count and percent parsing. |
+
 ## Errors
 
 | Condition | Message |

@@ -11,14 +11,14 @@
     { "label": "Console", "url": "https://console.anthropic.com/" }
   ],
   "lines": [
-    { "type": "progress", "label": "Session", "scope": "overview", "primaryOrder": 1 },
-    { "type": "progress", "label": "Weekly", "scope": "overview", "primaryOrder": 2 },
-    { "type": "progress", "label": "Sonnet", "scope": "detail" },
-    { "type": "progress", "label": "Claude Design", "scope": "detail" },
-    { "type": "progress", "label": "Extra usage spent", "scope": "overview", "primaryOrder": 3 },
-    { "type": "text", "label": "Today", "scope": "detail" },
-    { "type": "text", "label": "Yesterday", "scope": "detail" },
-    { "type": "text", "label": "Last 30 Days", "scope": "detail" },
-    { "type": "barChart", "label": "Usage Trend", "scope": "detail" }
+    { "type": "progress", "label": "Session", "scope": "overview", "classification": "required", "primaryOrder": 1 },
+    { "type": "progress", "label": "Weekly", "scope": "overview", "classification": "required", "primaryOrder": 2 },
+    { "type": "progress", "label": "Sonnet", "scope": "detail", "classification": "planDependent" },
+    { "type": "progress", "label": "Claude Design", "scope": "detail", "classification": "planDependent" },
+    { "type": "progress", "label": "Extra usage spent", "scope": "overview", "classification": "optional", "primaryOrder": 3 },
+    { "type": "text", "label": "Today", "scope": "detail", "classification": "optional" },
+    { "type": "text", "label": "Yesterday", "scope": "detail", "classification": "optional" },
+    { "type": "text", "label": "Last 30 Days", "scope": "detail", "classification": "optional" },
+    { "type": "barChart", "label": "Usage Trend", "scope": "detail", "classification": "optional" }
   ]
 }

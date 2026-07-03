@@ -40,11 +40,26 @@ When a bearer token is present in the cache DB, the plugin calls:
 
 ## Output
 
-- **Plan**: `Pro` when `customerInfo.is_pro === true`
-- **Usage** (single progress bar line):
-  - `limit = customerInfo.balance`
-  - `used = sum(usage-analytics[].meter_event_summaries[].cost)`
-  - `resetsAt` not set (UI shows `$<limit> limit`, no reset countdown)
+- **Plan**: `Pro` or `Max` when account metadata exposes that tier.
+- **API credits**: shown when API group balance is usable.
+  - `limit = customerInfo.balance` or equivalent balance field.
+  - `used = sum(usage-analytics[].meter_event_summaries[].cost)`.
+  - `resetsAt` not set; UI shows `$<limit> limit`.
+- **Rate-limit text lines**: shown for Pro/Max accounts when API credit balance is zero or rate limits are also returned.
+  - `Queries` from `remaining_pro`.
+  - `Deep Research` from `remaining_research`.
+  - `Labs` from `remaining_labs`.
+  - `Agentic Research` exists in the manifest for future support, but lacks current docs/tests evidence.
+
+## Metric classification
+
+| Metric | Classification | Evidence |
+|---|---|---|
+| API credits | Optional | Tests cover API credit balance rendering and zero-balance rate-limit fallback. |
+| Queries | Plan-dependent | Tests cover Pro/Max rate-limit responses. |
+| Deep Research | Plan-dependent | Tests cover Pro rate-limit responses. |
+| Labs | Plan-dependent | Tests cover Pro rate-limit responses when `remaining_labs` exists. |
+| Agentic Research | Unclassified | Blocked: no provider docs or test fixture currently prove this line. |
 
 ## Limitations
 

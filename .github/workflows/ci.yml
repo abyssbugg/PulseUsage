@@ -26,6 +26,10 @@ jobs:
       - run: bun install
       - name: Bundle plugins
         run: bun run bundle:plugins
+      - name: Provider metadata validator tests
+        run: bun run test:provider-validator
+      - name: Validate provider metadata
+        run: bun run validate:providers
       - name: Release script guard tests
         run: bash scripts/build-release-guards.test.sh
 

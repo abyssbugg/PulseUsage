@@ -258,6 +258,14 @@ The response includes all models provisioned for the account. The plugin filters
 
 The Cloud Code model set is a superset of the LS model set. The LS returns only cascade-configured chat models, Cloud Code includes all provisioned models. This difference is expected.
 
+## Metric classification
+
+| Metric | Classification | Evidence |
+|---|---|---|
+| Gemini Pro | Optional | Docs state model lists are dynamic; tests cover this group when matching model configs exist. |
+| Gemini Flash | Optional | Docs state model lists are dynamic; tests cover this group when matching model configs exist. |
+| Claude | Optional | Docs state model lists are dynamic; tests cover this group when matching Claude configs exist. |
+
 ## Plugin Strategy
 
 1. Probe the Antigravity app/IDE language server.

@@ -93,6 +93,14 @@ All progress lines include:
 - `resetsAt` — ISO timestamp of next quota reset
 - `periodDurationMs` — 30-day period (2592000000ms)
 
+## Metric classification
+
+| Metric | Classification | Evidence |
+|---|---|---|
+| Premium | Plan-dependent | Provider docs mark this as paid-tier only; tests cover paid response rendering. |
+| Chat | Required | Provider docs mark this as both paid and free tier; tests cover both shapes. |
+| Completions | Plan-dependent | Provider docs mark this as free-tier only; tests cover free-tier rendering. |
+
 ## Errors
 
 | Condition       | Message                                           |

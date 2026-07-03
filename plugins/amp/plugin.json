@@ -7,8 +7,8 @@
   "icon": "icon.svg",
   "brandColor": "#F34E3F",
   "lines": [
-    { "type": "progress", "label": "Free", "scope": "overview", "primaryOrder": 1 },
-    { "type": "text", "label": "Bonus", "scope": "detail" },
-    { "type": "text", "label": "Credits", "scope": "overview" }
+    { "type": "progress", "label": "Free", "scope": "overview", "classification": "planDependent", "primaryOrder": 1 },
+    { "type": "text", "label": "Bonus", "scope": "detail", "classification": "planDependent" },
+    { "type": "text", "label": "Credits", "scope": "overview", "classification": "planDependent" }
   ]
 }

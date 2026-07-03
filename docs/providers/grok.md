@@ -80,6 +80,13 @@ Used fields:
 | Credits used | Percent of included monthly credits used |
 | Pay as you go | Disabled, or the configured pay-as-you-go cap |
 
+## Metric classification
+
+| Metric | Classification | Evidence |
+|---|---|---|
+| Credits used | Required | Provider docs map `used.val` and `monthlyLimit.val`; tests cover the progress line. |
+| Pay as you go | Required | Provider docs map `onDemandCap.val`; tests cover disabled and enabled states. |
+
 ## Errors
 
 | Condition | Message |

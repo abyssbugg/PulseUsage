@@ -93,6 +93,13 @@ refresh_token=<refresh_token>
 }
 ```
 
+## Metric classification
+
+| Metric | Classification | Evidence |
+|---|---|---|
+| Session | Optional | Tests cover session rendering and a response where usage data only produces Weekly. |
+| Weekly | Optional | Tests cover weekly rendering and omission when weekly equals session. |
+
 ## Notes
 
 - The plugin refreshes tokens when near expiry (5-minute buffer).

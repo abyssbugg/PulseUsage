@@ -58,6 +58,7 @@ pub struct AppState {
 pub struct PluginMeta {
     pub id: String,
     pub name: String,
+    pub version: String,
     pub icon_url: String,
     pub brand_color: Option<String>,
     pub lines: Vec<ManifestLineDto>,
@@ -74,6 +75,7 @@ pub struct ManifestLineDto {
     pub line_type: String,
     pub label: String,
     pub scope: String,
+    pub classification: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -377,6 +379,7 @@ fn list_plugins(state: tauri::State<'_, Mutex<AppState>>) -> Vec<PluginMeta> {
             PluginMeta {
                 id: plugin.manifest.id,
                 name: plugin.manifest.name,
+                version: plugin.manifest.version,
                 icon_url: plugin.icon_data_url,
                 brand_color: plugin.manifest.brand_color,
                 lines: plugin
@@ -387,6 +390,10 @@ fn list_plugins(state: tauri::State<'_, Mutex<AppState>>) -> Vec<PluginMeta> {
                         line_type: line.line_type.clone(),
                         label: line.label.clone(),
                         scope: line.scope.clone(),
+                        classification:
+                            plugin_engine::diagnostics::normalized_classification_string(
+                                line.classification.as_deref(),
+                            ),
                     })
                     .collect(),
                 links: plugin

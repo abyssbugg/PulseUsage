@@ -9,6 +9,7 @@ pub struct ManifestLine {
     pub line_type: String,
     pub label: String,
     pub scope: String,
+    pub classification: Option<String>,
     /// Lower number = higher priority for primary metric selection.
     /// Only progress lines with primary_order are candidates.
     pub primary_order: Option<u32>,
@@ -176,8 +177,36 @@ mod tests {
             "#,
         );
         assert_eq!(manifest.lines.len(), 1);
+        assert!(manifest.lines[0].classification.is_none());
         assert!(manifest.lines[0].primary_order.is_none());
         assert!(manifest.links.is_empty());
+    }
+
+    #[test]
+    fn metric_classification_is_optional_and_preserved_when_present() {
+        let manifest = parse_manifest(
+            r#"
+            {
+              "schemaVersion": 1,
+              "id": "x",
+              "name": "X",
+              "version": "0.0.1",
+              "entry": "plugin.js",
+              "icon": "icon.svg",
+              "brandColor": null,
+              "lines": [
+                { "type": "progress", "label": "A", "scope": "overview", "classification": "required" },
+                { "type": "text", "label": "B", "scope": "detail" }
+              ]
+            }
+            "#,
+        );
+
+        assert_eq!(
+            manifest.lines[0].classification.as_deref(),
+            Some("required")
+        );
+        assert!(manifest.lines[1].classification.is_none());
     }
 
     #[test]

@@ -59,6 +59,20 @@ Returns rate limit windows and optional extra credits.
 
 All windows are enforced simultaneously — hitting any limit throttles the user.
 
+## Metric classification
+
+| Metric | Classification | Evidence |
+|---|---|---|
+| Session | Required | API docs describe `five_hour`; tests cover rendering from `five_hour.utilization`. |
+| Weekly | Required | API docs describe `seven_day`; tests cover rendering from `seven_day.utilization`. |
+| Sonnet | Plan-dependent | Tests cover `seven_day_sonnet` as a separate model limit when present. |
+| Claude Design | Plan-dependent | API docs mark `seven_day_omelette` optional/plan-dependent; tests cover present and omitted cases. |
+| Extra usage spent | Optional | API docs mark `extra_usage` optional; tests cover enabled and omitted cases. |
+| Today | Optional | Local `ccusage` history line; tests cover present and unavailable runner cases. |
+| Yesterday | Optional | Local `ccusage` history line; tests cover present and unavailable runner cases. |
+| Last 30 Days | Optional | Local `ccusage` history line; tests cover present and empty-history cases. |
+| Usage Trend | Optional | Local `ccusage` chart; tests cover chart generation when daily history exists. |
+
 ## Authentication
 
 ### Token Location
