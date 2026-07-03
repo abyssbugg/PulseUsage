@@ -1,6 +1,62 @@
 use base64::{Engine, engine::general_purpose::STANDARD};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderCapability {
+    pub status: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub details: Option<String>,
+    #[serde(rename = "docsUrl")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub docs_url: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderCapabilities {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub models: Option<ProviderCapability>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub account_usage: Option<ProviderCapability>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub billing: Option<ProviderCapability>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rate_limits: Option<ProviderCapability>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub organizations: Option<ProviderCapability>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_usage_metrics: Option<ProviderCapability>,
+}
+
+impl ProviderCapabilities {
+    pub fn validate(&self) -> Result<(), String> {
+        validate_capability("models", &self.models)?;
+        validate_capability("accountUsage", &self.account_usage)?;
+        validate_capability("billing", &self.billing)?;
+        validate_capability("rateLimits", &self.rate_limits)?;
+        validate_capability("organizations", &self.organizations)?;
+        validate_capability("responseUsageMetrics", &self.response_usage_metrics)?;
+        Ok(())
+    }
+}
+
+fn validate_capability(name: &str, capability: &Option<ProviderCapability>) -> Result<(), String> {
+    let Some(capability) = capability else {
+        return Ok(());
+    };
+    if !matches!(
+        capability.status.as_str(),
+        "supported" | "unsupported" | "partial" | "planned" | "undocumented"
+    ) {
+        return Err(format!(
+            "capability {} has invalid status '{}'",
+            name, capability.status
+        ));
+    }
+    Ok(())
+}
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -32,6 +88,7 @@ pub struct PluginManifest {
     pub entry: String,
     pub icon: String,
     pub brand_color: Option<String>,
+    pub capabilities: Option<ProviderCapabilities>,
     pub lines: Vec<ManifestLine>,
     #[serde(default)]
     pub links: Vec<PluginLink>,
@@ -77,6 +134,18 @@ fn load_single_plugin(
     let manifest_text = std::fs::read_to_string(&manifest_path)?;
     let mut manifest: PluginManifest = serde_json::from_str(&manifest_text)?;
     manifest.links = sanitize_plugin_links(&manifest.id, std::mem::take(&mut manifest.links));
+
+    // Validate optional capabilities: warn and drop on invalid (ADR-001 "fail safely")
+    if let Some(ref caps) = manifest.capabilities {
+        if let Err(msg) = caps.validate() {
+            log::warn!(
+                "plugin {} has invalid capabilities: {}; dropping",
+                manifest.id,
+                msg
+            );
+            manifest.capabilities = None;
+        }
+    }
 
     // Validate primary_order: only progress lines can have it
     for line in manifest.lines.iter() {
@@ -180,6 +249,48 @@ mod tests {
         assert!(manifest.lines[0].classification.is_none());
         assert!(manifest.lines[0].primary_order.is_none());
         assert!(manifest.links.is_empty());
+        assert!(manifest.capabilities.is_none());
+    }
+
+    #[test]
+    fn capabilities_are_optional_and_preserved_when_present() {
+        let manifest = parse_manifest(
+            r#"
+            {
+              "schemaVersion": 1,
+              "id": "x",
+              "name": "X",
+              "version": "0.0.1",
+              "entry": "plugin.js",
+              "icon": "icon.svg",
+              "brandColor": null,
+              "capabilities": {
+                "models": { "status": "supported", "details": "Lists models", "docsUrl": "https://example.com/models" },
+                "billing": { "status": "undocumented" }
+              },
+              "lines": [
+                { "type": "progress", "label": "A", "scope": "overview" }
+              ]
+            }
+            "#,
+        );
+
+        let capabilities = manifest.capabilities.expect("capabilities");
+        let models = capabilities.models.as_ref().expect("models");
+        assert_eq!(models.status, "supported");
+        assert_eq!(models.details.as_deref(), Some("Lists models"));
+        assert_eq!(
+            models.docs_url.as_deref(),
+            Some("https://example.com/models")
+        );
+        assert_eq!(
+            capabilities.billing.as_ref().expect("billing").status,
+            "undocumented"
+        );
+        assert!(capabilities.account_usage.is_none());
+        assert!(capabilities.rate_limits.is_none());
+        assert!(capabilities.organizations.is_none());
+        assert!(capabilities.response_usage_metrics.is_none());
     }
 
     #[test]
@@ -318,5 +429,139 @@ mod tests {
         assert_eq!(sanitized.len(), 1);
         assert_eq!(sanitized[0].label, "Status");
         assert_eq!(sanitized[0].url, "https://status.example.com");
+    }
+
+    // --- Capability contract tests (ADR-001 / IMP-004 PR-1) ---
+
+    #[test]
+    fn missing_capabilities_parse_successfully() {
+        let manifest = parse_manifest(
+            r#"
+            {
+              "schemaVersion": 1,
+              "id": "x",
+              "name": "X",
+              "version": "0.0.1",
+              "entry": "plugin.js",
+              "icon": "icon.svg",
+              "brandColor": null,
+              "lines": [
+                { "type": "progress", "label": "A", "scope": "overview", "primaryOrder": 1 }
+              ]
+            }
+            "#,
+        );
+        assert!(manifest.capabilities.is_none());
+    }
+
+    #[test]
+    fn valid_capabilities_parse_successfully() {
+        let manifest = parse_manifest(
+            r#"
+            {
+              "schemaVersion": 1,
+              "id": "x",
+              "name": "X",
+              "version": "0.0.1",
+              "entry": "plugin.js",
+              "icon": "icon.svg",
+              "brandColor": null,
+              "capabilities": {
+                "models": { "status": "supported", "docsUrl": "https://docs.example.com" },
+                "accountUsage": { "status": "unsupported" },
+                "billing": { "status": "planned", "details": "Q3 2026" }
+              },
+              "lines": [
+                { "type": "progress", "label": "A", "scope": "overview", "primaryOrder": 1 }
+              ]
+            }
+            "#,
+        );
+        let caps = manifest
+            .capabilities
+            .expect("capabilities should be present");
+        assert_eq!(caps.models.as_ref().unwrap().status, "supported");
+        assert_eq!(
+            caps.models.as_ref().unwrap().docs_url.as_deref(),
+            Some("https://docs.example.com")
+        );
+        assert_eq!(caps.account_usage.as_ref().unwrap().status, "unsupported");
+        assert_eq!(caps.billing.as_ref().unwrap().status, "planned");
+        assert!(caps.rate_limits.is_none());
+        assert!(caps.validate().is_ok());
+    }
+
+    #[test]
+    fn invalid_capability_status_is_rejected_by_validate() {
+        let caps = ProviderCapabilities {
+            models: Some(ProviderCapability {
+                status: "live".to_string(),
+                details: None,
+                docs_url: None,
+            }),
+            ..Default::default()
+        };
+        let err = caps.validate().expect_err("invalid status should fail");
+        assert!(
+            err.contains("models"),
+            "error should name the field: {}",
+            err
+        );
+        assert!(
+            err.contains("live"),
+            "error should name the bad status: {}",
+            err
+        );
+    }
+
+    #[test]
+    fn all_valid_statuses_pass_validation() {
+        for status in [
+            "supported",
+            "unsupported",
+            "partial",
+            "planned",
+            "undocumented",
+        ] {
+            let caps = ProviderCapabilities {
+                models: Some(ProviderCapability {
+                    status: status.to_string(),
+                    details: None,
+                    docs_url: None,
+                }),
+                ..Default::default()
+            };
+            assert!(
+                caps.validate().is_ok(),
+                "status '{}' should be valid",
+                status
+            );
+        }
+    }
+
+    #[test]
+    fn empty_capabilities_object_parses_and_validates() {
+        let manifest = parse_manifest(
+            r#"
+            {
+              "schemaVersion": 1,
+              "id": "x",
+              "name": "X",
+              "version": "0.0.1",
+              "entry": "plugin.js",
+              "icon": "icon.svg",
+              "brandColor": null,
+              "capabilities": {},
+              "lines": [
+                { "type": "progress", "label": "A", "scope": "overview", "primaryOrder": 1 }
+              ]
+            }
+            "#,
+        );
+        let caps = manifest
+            .capabilities
+            .expect("capabilities should be present");
+        assert!(caps.validate().is_ok());
+        assert!(caps.models.is_none());
     }
 }

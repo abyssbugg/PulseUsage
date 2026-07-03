@@ -100,10 +100,33 @@ export type PluginLink = {
   url: string
 }
 
+export type ProviderCapabilityStatus =
+  | "supported"
+  | "unsupported"
+  | "partial"
+  | "planned"
+  | "undocumented"
+
+export type ProviderCapability = {
+  status: ProviderCapabilityStatus
+  details?: string
+  docsUrl?: string
+}
+
+export type ProviderCapabilities = {
+  models?: ProviderCapability
+  accountUsage?: ProviderCapability
+  billing?: ProviderCapability
+  rateLimits?: ProviderCapability
+  organizations?: ProviderCapability
+  responseUsageMetrics?: ProviderCapability
+}
+
 export type PluginOutput = {
   providerId: string
   displayName: string
   plan?: string
+  capabilities?: ProviderCapabilities
   lines: MetricLine[]
   iconUrl: string
   diagnostics?: ProviderDiagnostics
@@ -115,6 +138,7 @@ export type PluginMeta = {
   version?: string
   iconUrl: string
   brandColor?: string
+  capabilities?: ProviderCapabilities
   lines: ManifestLine[]
   links?: PluginLink[]
   /** Ordered list of primary metric candidates. Frontend picks first available. */

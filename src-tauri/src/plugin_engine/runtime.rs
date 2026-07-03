@@ -5,7 +5,7 @@ use crate::plugin_engine::diagnostics::{
     normalize_metric_classification, redact_diagnostic_text,
 };
 use crate::plugin_engine::host_api;
-use crate::plugin_engine::manifest::LoadedPlugin;
+use crate::plugin_engine::manifest::{LoadedPlugin, ProviderCapabilities, ProviderCapability};
 use rquickjs::{Array, Context, Ctx, Error, Object, Promise, Runtime, Value};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -71,6 +71,8 @@ pub struct PluginOutput {
     pub provider_id: String,
     pub display_name: String,
     pub plan: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub capabilities: Option<ProviderCapabilities>,
     pub lines: Vec<MetricLine>,
     pub icon_url: String,
     pub diagnostics: ProviderDiagnostics,
@@ -332,16 +334,125 @@ fn run_probe_with_timeout(
             Ok(_) => vec![error_line("no lines returned".to_string())],
             Err(msg) => vec![error_line(msg)],
         };
+        let capabilities = match parse_capabilities(&result) {
+            Ok(capabilities) => capabilities,
+            Err(msg) => {
+                let lines = vec![error_line(msg)];
+                return PluginOutput {
+                    provider_id: plugin_id,
+                    display_name,
+                    plan,
+                    capabilities: None,
+                    diagnostics: build_diagnostics(plugin, &lines, diagnostics_recorder.snapshot()),
+                    lines,
+                    icon_url,
+                };
+            }
+        };
 
         PluginOutput {
             provider_id: plugin_id,
             display_name,
             plan,
+            capabilities,
             diagnostics: build_diagnostics(plugin, &lines, diagnostics_recorder.snapshot()),
             lines,
             icon_url,
         }
     })
+}
+
+fn parse_capabilities(result: &Object) -> Result<Option<ProviderCapabilities>, String> {
+    let value: Value = match result.get("capabilities") {
+        Ok(value) => value,
+        Err(_) => return Ok(None),
+    };
+    if value.is_null() || value.is_undefined() {
+        return Ok(None);
+    }
+    let capabilities_obj = value
+        .into_object()
+        .ok_or_else(|| "capabilities must be an object".to_string())?;
+    let capabilities = ProviderCapabilities {
+        models: parse_capability(&capabilities_obj, "models")?,
+        account_usage: parse_capability(&capabilities_obj, "accountUsage")?,
+        billing: parse_capability(&capabilities_obj, "billing")?,
+        rate_limits: parse_capability(&capabilities_obj, "rateLimits")?,
+        organizations: parse_capability(&capabilities_obj, "organizations")?,
+        response_usage_metrics: parse_capability(&capabilities_obj, "responseUsageMetrics")?,
+    };
+    capabilities.validate()?;
+    Ok(Some(capabilities))
+}
+
+fn parse_capability(obj: &Object, name: &str) -> Result<Option<ProviderCapability>, String> {
+    let value: Value = match obj.get(name) {
+        Ok(value) => value,
+        Err(_) => return Ok(None),
+    };
+    if value.is_null() || value.is_undefined() {
+        return Ok(None);
+    }
+    let capability = value
+        .into_object()
+        .ok_or_else(|| format!("capability {} must be an object", name))?;
+    let status = required_string(&capability, name, "status")?;
+    let details = optional_string(&capability, name, "details")?;
+    let docs_url = optional_string(&capability, name, "docsUrl")?;
+    Ok(Some(ProviderCapability {
+        status,
+        details,
+        docs_url,
+    }))
+}
+
+fn required_string(
+    obj: &Object,
+    capability_name: &str,
+    field_name: &str,
+) -> Result<String, String> {
+    let value: Value = obj
+        .get(field_name)
+        .map_err(|_| format!("capability {} missing {}", capability_name, field_name))?;
+    let string = value.as_string().ok_or_else(|| {
+        format!(
+            "capability {} {} must be a string",
+            capability_name, field_name
+        )
+    })?;
+    let value = string.to_string().unwrap_or_default().trim().to_string();
+    if value.is_empty() {
+        return Err(format!(
+            "capability {} {} must be non-empty",
+            capability_name, field_name
+        ));
+    }
+    Ok(value)
+}
+
+fn optional_string(
+    obj: &Object,
+    capability_name: &str,
+    field_name: &str,
+) -> Result<Option<String>, String> {
+    let value: Value = match obj.get(field_name) {
+        Ok(value) => value,
+        Err(_) => return Ok(None),
+    };
+    if value.is_null() || value.is_undefined() {
+        return Ok(None);
+    }
+    let string = value.as_string().ok_or_else(|| {
+        format!(
+            "capability {} {} must be a string",
+            capability_name, field_name
+        )
+    })?;
+    let value = string.to_string().unwrap_or_default().trim().to_string();
+    if value.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(value))
 }
 
 fn parse_lines(result: &Object) -> Result<Vec<MetricLine>, String> {
@@ -797,6 +908,7 @@ fn error_output_with_facts(
         provider_id: plugin.manifest.id.clone(),
         display_name: plugin.manifest.name.clone(),
         plan: None,
+        capabilities: None,
         diagnostics: build_diagnostics(plugin, &lines, host_facts),
         lines,
         icon_url: plugin.icon_data_url.clone(),
@@ -1072,6 +1184,7 @@ mod tests {
                 entry: "plugin.js".to_string(),
                 icon: "icon.svg".to_string(),
                 brand_color: None,
+                capabilities: None,
                 lines: vec![],
                 links: vec![],
             },
@@ -1232,6 +1345,108 @@ mod tests {
         assert_eq!(
             output.diagnostics.missing_metrics[1].classification,
             MetricClassification::Unknown
+        );
+        assert!(output.capabilities.is_none());
+    }
+
+    #[test]
+    fn run_probe_preserves_valid_optional_capabilities() {
+        let plugin = test_plugin(
+            r#"
+            globalThis.__pulseusage_plugin = {
+                probe(ctx) {
+                    return {
+                        capabilities: {
+                            models: { status: "supported", details: "Lists models", docsUrl: "https://example.com/models" },
+                            accountUsage: { status: "undocumented" },
+                            billing: { status: "unsupported", details: "No billing API" },
+                            rateLimits: { status: "partial" },
+                            organizations: { status: "planned" },
+                            responseUsageMetrics: { status: "supported" }
+                        },
+                        lines: [ctx.line.badge({ label: "Status", text: "Connected" })]
+                    };
+                }
+            };
+            "#,
+        );
+
+        let output = run_probe(&plugin, &temp_app_dir("capabilities-valid"), "0.0.0");
+        let capabilities = output.capabilities.expect("capabilities");
+        let models = capabilities.models.as_ref().expect("models");
+
+        assert_eq!(models.status, "supported");
+        assert_eq!(models.details.as_deref(), Some("Lists models"));
+        assert_eq!(
+            models.docs_url.as_deref(),
+            Some("https://example.com/models")
+        );
+        assert_eq!(
+            capabilities
+                .account_usage
+                .as_ref()
+                .expect("account usage")
+                .status,
+            "undocumented"
+        );
+        assert_eq!(
+            capabilities.billing.as_ref().expect("billing").status,
+            "unsupported"
+        );
+        assert_eq!(
+            capabilities
+                .rate_limits
+                .as_ref()
+                .expect("rate limits")
+                .status,
+            "partial"
+        );
+        assert_eq!(
+            capabilities
+                .organizations
+                .as_ref()
+                .expect("organizations")
+                .status,
+            "planned"
+        );
+        assert_eq!(
+            capabilities
+                .response_usage_metrics
+                .as_ref()
+                .expect("response usage metrics")
+                .status,
+            "supported"
+        );
+        assert_eq!(output.lines.len(), 1);
+    }
+
+    #[test]
+    fn run_probe_rejects_invalid_capability_status() {
+        let plugin = test_plugin(
+            r#"
+            globalThis.__pulseusage_plugin = {
+                probe(ctx) {
+                    return {
+                        capabilities: {
+                            models: { status: "definitely" }
+                        },
+                        lines: [ctx.line.badge({ label: "Status", text: "Connected" })]
+                    };
+                }
+            };
+            "#,
+        );
+
+        let output = run_probe(
+            &plugin,
+            &temp_app_dir("capabilities-invalid-status"),
+            "0.0.0",
+        );
+
+        assert!(output.capabilities.is_none());
+        assert_eq!(
+            error_text(output),
+            "capability models has invalid status 'definitely'"
         );
     }
 
@@ -1424,6 +1639,83 @@ mod tests {
         assert_eq!(
             json["points"].as_array().expect("points array").len(),
             MAX_BAR_CHART_POINTS
+        );
+    }
+
+    // --- Capability contract runtime tests (ADR-001 / IMP-004 PR-1) ---
+
+    #[test]
+    fn run_probe_propagates_valid_capabilities() {
+        let plugin = test_plugin(
+            r#"
+            globalThis.__pulseusage_plugin = {
+                probe(ctx) {
+                    return {
+                        lines: [ctx.line.text({ label: "Status", value: "ok" })],
+                        capabilities: {
+                            models: { status: "supported", docsUrl: "https://docs.example.com" },
+                            accountUsage: { status: "unsupported" },
+                            billing: { status: "planned", details: "Q3 2026" }
+                        }
+                    };
+                }
+            };
+            "#,
+        );
+        let output = run_probe(&plugin, &temp_app_dir("caps-valid"), "0.0.0");
+        let caps = output.capabilities.expect("capabilities should be present");
+        assert_eq!(caps.models.as_ref().unwrap().status, "supported");
+        assert_eq!(
+            caps.models.as_ref().unwrap().docs_url.as_deref(),
+            Some("https://docs.example.com")
+        );
+        assert_eq!(caps.account_usage.as_ref().unwrap().status, "unsupported");
+        assert_eq!(caps.billing.as_ref().unwrap().status, "planned");
+        assert!(caps.rate_limits.is_none());
+    }
+
+    #[test]
+    fn run_probe_capabilities_absent_when_not_emitted() {
+        let plugin = test_plugin(
+            r#"
+            globalThis.__pulseusage_plugin = {
+                probe(ctx) {
+                    return { lines: [ctx.line.text({ label: "Status", value: "ok" })] };
+                }
+            };
+            "#,
+        );
+        let output = run_probe(&plugin, &temp_app_dir("caps-absent"), "0.0.0");
+        assert!(output.capabilities.is_none());
+        assert!(!output.lines.is_empty());
+    }
+
+    #[test]
+    fn run_probe_invalid_capability_status_fails_safely() {
+        let plugin = test_plugin(
+            r#"
+            globalThis.__pulseusage_plugin = {
+                probe(ctx) {
+                    return {
+                        lines: [ctx.line.text({ label: "Status", value: "ok" })],
+                        capabilities: {
+                            models: { status: "live" }
+                        }
+                    };
+                }
+            };
+            "#,
+        );
+        let output = run_probe(&plugin, &temp_app_dir("caps-invalid"), "0.0.0");
+        assert!(
+            output.capabilities.is_none(),
+            "invalid capabilities must be dropped, not propagated"
+        );
+        let err = error_text(output);
+        assert!(
+            err.contains("invalid status"),
+            "error should mention invalid status: {}",
+            err
         );
     }
 }

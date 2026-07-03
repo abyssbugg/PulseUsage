@@ -345,6 +345,7 @@ mod tests {
             provider_id: id.to_string(),
             display_name: name.to_string(),
             plan: Some("Pro".to_string()),
+            capabilities: None,
             lines: vec![MetricLine::Text {
                 label: "Usage".to_string(),
                 value: "42%".to_string(),
