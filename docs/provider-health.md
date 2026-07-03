@@ -54,7 +54,7 @@ Classification values:
 - Metric classifications: Session=required; Weekly=required; Credits=optional; Spark=planDependent; Spark Weekly=planDependent; Reviews=planDependent; Today=optional; Yesterday=optional; Last 30 Days=optional; Usage Trend=optional.
 - Last audit date: 2026-06-07.
 - Last validation date: 2026-06-07.
-- Notes: Parser matched audited Team shape.
+- Notes: Parser matched audited Team shape; fresh-window 1% normalization aligned with OpenUsage v0.7.2.
 - Follow-up actions: Capture sanitized Spark/review-limit responses when available.
 
 ## Copilot

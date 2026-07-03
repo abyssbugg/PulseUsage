@@ -60,6 +60,10 @@ Returns rate limit windows and optional credits.
 
 Both rate_limit windows are enforced simultaneously — hitting either limit throttles the user.
 
+### Fresh-window normalization
+
+After a rolling window resets, Codex may still report `used_percent: 1` because the API floors to whole percents. When the reset is still (nearly) a full period away, the parser treats that 1% reading as unused and displays 0% used. This matches OpenUsage v0.7.2+ behavior and avoids stale "99% remaining" readings caused by request latency on `reset_after_seconds`.
+
 ## Provider health
 
 Last audited: 2026-06-07.
