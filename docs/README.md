@@ -62,12 +62,12 @@ Architecture roadmaps define technical sequencing and architectural dependencies
 
 ## Official Provider Usage PR Order
 
-| PR | Theme |
-|----|-------|
-| PR-1 | Provider capability contracts |
-| PR-2 | Ollama provider |
-| PR-3 | Usage observations |
-| PR-4 | SQLite persistence |
-| PR-5 | Provider upgrades |
-| PR-6 | Budgets and alerts |
-| PR-7 | Forecasting and history |
+| PR | Theme | Status |
+|----|-------|--------|
+| PR-1 | Provider capability contracts | Complete via PR #28 |
+| PR-2 | Ollama provider | Planned |
+| PR-3 | Usage observations | Planned |
+| PR-4 | SQLite persistence | Deferred |
+| PR-5 | Provider upgrades | Planned |
+| PR-6 | Budgets and alerts | Deferred |
+| PR-7 | Forecasting and history | Deferred |

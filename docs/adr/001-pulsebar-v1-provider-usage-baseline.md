@@ -30,7 +30,7 @@ Adopt the PulseBar v1 provider and usage baseline below:
 
 | PR | Theme | Status |
 |----|-------|--------|
-| PR-1 | Provider capability contracts | Planned |
+| PR-1 | Provider capability contracts | Complete via PR #28 |
 | PR-2 | Ollama provider | Planned |
 | PR-3 | Usage observations | Planned |
 | PR-4 | SQLite persistence | Deferred until PR-3 proves semantic observation need |

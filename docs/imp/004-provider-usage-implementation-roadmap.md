@@ -13,15 +13,15 @@ This roadmap converts the approved PulseBar provider and usage architecture into
 
 ## Official PR Order
 
-| PR | Title | Dependency | Review Complexity | Merge Risk |
-|----|-------|------------|-------------------|------------|
-| PR-1 | Provider capability contracts | None | Low | Low |
-| PR-2 | Ollama provider | PR-1 preferred | Medium | Medium |
-| PR-3 | Usage observations | PR-1 | Medium | Medium |
-| PR-4 | SQLite persistence | PR-3 and demonstrated observation need | Medium-high | Medium-high |
-| PR-5 | Provider upgrades | PR-3, PR-4 preferred | Medium per provider | Medium per provider |
-| PR-6 | Budgets and alerts | PR-4, PR-5 | High | High |
-| PR-7 | Forecasting and history | PR-4, PR-6 preferred | Medium-high | Medium-high |
+| PR | Title | Status | Dependency | Review Complexity | Merge Risk |
+|----|-------|--------|------------|-------------------|------------|
+| PR-1 | Provider capability contracts | Complete via PR #28 | None | Low | Low |
+| PR-2 | Ollama provider | Planned | PR-1 preferred | Medium | Medium |
+| PR-3 | Usage observations | Planned | PR-1 | Medium | Medium |
+| PR-4 | SQLite persistence | Deferred | PR-3 and demonstrated observation need | Medium-high | Medium-high |
+| PR-5 | Provider upgrades | Planned | PR-3, PR-4 preferred | Medium per provider | Medium per provider |
+| PR-6 | Budgets and alerts | Deferred | PR-4, PR-5 | High | High |
+| PR-7 | Forecasting and history | Deferred | PR-4, PR-6 preferred | Medium-high | Medium-high |
 
 ## PR-1: Provider Capability Contracts
 
