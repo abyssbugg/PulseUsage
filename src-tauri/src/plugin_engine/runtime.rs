@@ -420,7 +420,7 @@ fn required_string(
             capability_name, field_name
         )
     })?;
-    let value = string.to_string().unwrap_or_default().trim().to_string();
+    let value = capability_string_to_owned(string, capability_name, field_name)?;
     if value.is_empty() {
         return Err(format!(
             "capability {} {} must be non-empty",
@@ -448,11 +448,25 @@ fn optional_string(
             capability_name, field_name
         )
     })?;
-    let value = string.to_string().unwrap_or_default().trim().to_string();
+    let value = capability_string_to_owned(string, capability_name, field_name)?;
     if value.is_empty() {
         return Ok(None);
     }
     Ok(Some(value))
+}
+
+fn capability_string_to_owned(
+    string: &rquickjs::String,
+    capability_name: &str,
+    field_name: &str,
+) -> Result<String, String> {
+    let value = string.to_string().map_err(|e| {
+        format!(
+            "capability {} {} could not be converted to string: {}",
+            capability_name, field_name, e
+        )
+    })?;
+    Ok(value.trim().to_string())
 }
 
 fn parse_lines(result: &Object) -> Result<Vec<MetricLine>, String> {
@@ -1716,6 +1730,31 @@ mod tests {
             err.contains("invalid status"),
             "error should mention invalid status: {}",
             err
+        );
+    }
+
+    #[test]
+    fn run_probe_rejects_non_string_capability_detail() {
+        let plugin = test_plugin(
+            r#"
+            globalThis.__pulseusage_plugin = {
+                probe(ctx) {
+                    return {
+                        lines: [ctx.line.text({ label: "Status", value: "ok" })],
+                        capabilities: {
+                            models: { status: "supported", details: 42 }
+                        }
+                    };
+                }
+            };
+            "#,
+        );
+        let output = run_probe(&plugin, &temp_app_dir("caps-non-string-detail"), "0.0.0");
+
+        assert!(output.capabilities.is_none());
+        assert_eq!(
+            error_text(output),
+            "capability models details must be a string"
         );
     }
 }
