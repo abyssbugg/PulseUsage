@@ -24,6 +24,20 @@ PulseUsage lives in your menu bar and shows you how much of your AI coding subsc
 - **[Local HTTP API](docs/local-http-api.md).** Other apps can read your usage data from `127.0.0.1:6736`.
 - **[Proxy support](docs/proxy.md).** Route provider HTTP requests through a SOCKS5 or HTTP proxy.
 
+## Menu Bar
+
+The status bar icon opens a menu with:
+
+- **Show Statistics** / **Settings…** — open the panel to the overview or settings.
+- **Log Level ▸** — change log verbosity (Error / Warn / Info / Debug / Trace).
+- **Diagnostics ▸**
+  - **Open Log Folder** — reveal the log directory in Finder.
+  - **Copy Log Path** — copy the log file path to the clipboard.
+  - **Export Diagnostics…** — copy log files plus a redacted metadata snapshot (app version, platform, plugin ids/names/versions; no credentials or settings) into a timestamped folder under Downloads and reveal it.
+- **About PulseUsage** — open the about panel.
+- **Download Latest Release** — open the GitHub releases page. PulseUsage does not self-update; download new builds manually.
+- **Quit** — exit the app.
+
 ## Supported Providers
 
 - [**Amp**](docs/providers/amp.md) / free tier, bonus, credits

@@ -5,8 +5,11 @@ use tauri::tray::{MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_nspanel::ManagerExt;
 use tauri_plugin_clipboard_manager::ClipboardExt;
+use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_store::StoreExt;
 
+use crate::diagnostics;
+use crate::identity;
 use crate::log_path;
 use crate::panel::{get_or_init_panel, position_panel_at_tray_icon, show_panel};
 
@@ -56,16 +59,25 @@ pub fn create(app_handle: &AppHandle) -> tauri::Result<()> {
     let current_level = get_stored_log_level(app_handle);
     log::set_max_level(current_level);
 
-    let show_stats = MenuItem::with_id(app_handle, "show_stats", "Show Stats", true, None::<&str>)?;
+    let app_name = identity::app_display_name(app_handle);
+
+    let show_stats = MenuItem::with_id(
+        app_handle,
+        "show_stats",
+        "Show Statistics",
+        true,
+        None::<&str>,
+    )?;
     let go_to_settings = MenuItem::with_id(
         app_handle,
         "go_to_settings",
-        "Go to Settings",
+        "Settings\u{2026}",
         true,
         None::<&str>,
     )?;
 
-    // Log level submenu - clone items for use in event handler
+    // Debug Level submenu: log verbosity only. Path/diagnostics actions live
+    // in the dedicated Diagnostics submenu to avoid duplication.
     let log_error = CheckMenuItem::with_id(
         app_handle,
         "log_error",
@@ -106,27 +118,11 @@ pub fn create(app_handle: &AppHandle) -> tauri::Result<()> {
         current_level == log::LevelFilter::Trace,
         None::<&str>,
     )?;
-    let log_level_separator = PredefinedMenuItem::separator(app_handle)?;
-    let copy_log_path = MenuItem::with_id(
-        app_handle,
-        "copy_log_path",
-        "Copy Log Path",
-        true,
-        None::<&str>,
-    )?;
     let log_level_submenu = Submenu::with_items(
         app_handle,
-        "Debug Level",
+        "Log Level",
         true,
-        &[
-            &log_error,
-            &log_warn,
-            &log_info,
-            &log_debug,
-            &log_trace,
-            &log_level_separator,
-            &copy_log_path,
-        ],
+        &[&log_error, &log_warn, &log_info, &log_debug, &log_trace],
     )?;
 
     // Clone for capture in event handler
@@ -138,8 +134,51 @@ pub fn create(app_handle: &AppHandle) -> tauri::Result<()> {
         (log_trace.clone(), log::LevelFilter::Trace),
     ];
 
+    // Diagnostics submenu: log access + export. All items are fully backed by
+    // current application capabilities (log_path + opener plugin + std::fs).
+    let open_log_folder = MenuItem::with_id(
+        app_handle,
+        "open_log_folder",
+        "Open Log Folder",
+        true,
+        None::<&str>,
+    )?;
+    let copy_log_path = MenuItem::with_id(
+        app_handle,
+        "copy_log_path",
+        "Copy Log Path",
+        true,
+        None::<&str>,
+    )?;
+    let export_diagnostics = MenuItem::with_id(
+        app_handle,
+        "export_diagnostics",
+        "Export Diagnostics\u{2026}",
+        true,
+        None::<&str>,
+    )?;
+    let diagnostics_submenu = Submenu::with_items(
+        app_handle,
+        "Diagnostics",
+        true,
+        &[&open_log_folder, &copy_log_path, &export_diagnostics],
+    )?;
+
     let separator = PredefinedMenuItem::separator(app_handle)?;
-    let about = MenuItem::with_id(app_handle, "about", "About PulseUsage", true, None::<&str>)?;
+    let about = MenuItem::with_id(
+        app_handle,
+        "about",
+        format!("About {}", app_name),
+        true,
+        None::<&str>,
+    )?;
+    let download_release = MenuItem::with_id(
+        app_handle,
+        "download_release",
+        "Download Latest Release",
+        true,
+        None::<&str>,
+    )?;
     let quit = MenuItem::with_id(app_handle, "quit", "Quit", true, None::<&str>)?;
 
     let menu = Menu::with_items(
@@ -148,8 +187,10 @@ pub fn create(app_handle: &AppHandle) -> tauri::Result<()> {
             &show_stats,
             &go_to_settings,
             &log_level_submenu,
+            &diagnostics_submenu,
             &separator,
             &about,
+            &download_release,
             &quit,
         ],
     )?;
@@ -157,7 +198,7 @@ pub fn create(app_handle: &AppHandle) -> tauri::Result<()> {
     TrayIconBuilder::with_id("tray")
         .icon(icon)
         .icon_as_template(true)
-        .tooltip("PulseUsage")
+        .tooltip(app_name)
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(move |app_handle, event| {
@@ -178,6 +219,48 @@ pub fn create(app_handle: &AppHandle) -> tauri::Result<()> {
                 "quit" => {
                     log::info!("quit requested via tray");
                     app_handle.exit(0);
+                }
+                "download_release" => {
+                    if let Err(error) = app_handle
+                        .opener()
+                        .open_url(identity::RELEASES_URL, None::<&str>)
+                    {
+                        log::error!("failed to open releases page: {}", error);
+                    }
+                }
+                "open_log_folder" => match log_path::for_app(app_handle) {
+                    Ok(path) => {
+                        if let Some(dir) = path.parent() {
+                            if let Err(error) = app_handle
+                                .opener()
+                                .open_path(dir.display().to_string(), None::<&str>)
+                            {
+                                log::error!("failed to open log folder: {}", error);
+                            }
+                        } else {
+                            log::error!("log path has no parent directory");
+                        }
+                    }
+                    Err(error) => {
+                        log::error!("failed to resolve log path: {}", error);
+                    }
+                },
+                "export_diagnostics" => {
+                    // Run off the main thread so the menu stays responsive.
+                    let handle = app_handle.clone();
+                    std::thread::spawn(move || match diagnostics::export(&handle) {
+                        Ok(dest) => {
+                            if let Err(error) = handle
+                                .opener()
+                                .open_path(dest.display().to_string(), None::<&str>)
+                            {
+                                log::error!("failed to reveal diagnostics folder: {}", error);
+                            }
+                        }
+                        Err(error) => {
+                            log::error!("diagnostics export failed: {}", error);
+                        }
+                    });
                 }
                 "log_error" | "log_warn" | "log_info" | "log_debug" | "log_trace" => {
                     let selected_level = match event.id.as_ref() {

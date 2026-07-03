@@ -1,6 +1,8 @@
 #[cfg(target_os = "macos")]
 mod app_nap;
 mod config;
+mod diagnostics;
+mod identity;
 mod local_http_api;
 mod log_path;
 mod panel;
