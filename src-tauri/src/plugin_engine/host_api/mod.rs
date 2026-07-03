@@ -1,3 +1,5 @@
+mod logging;
+
 use crate::plugin_engine::diagnostics::ProbeDiagnosticsRecorder;
 use aes_gcm::{
     AesGcm, Nonce,
@@ -396,7 +398,7 @@ pub(crate) fn inject_host_api_with_deadline<'js>(
     probe_ctx.set("app", app_obj)?;
 
     let host = Object::new(ctx.clone())?;
-    inject_log(ctx, &host, plugin_id)?;
+    logging::inject_log(ctx, &host, plugin_id)?;
     inject_fs(ctx, &host, diagnostics_recorder.clone())?;
     // plist.read is gated to plugins that need it (warp reads Warp-Stable.plist).
     // Only inject the plist capability for allowed plugin IDs to prevent unrestricted
@@ -422,37 +424,6 @@ pub(crate) fn inject_host_api_with_deadline<'js>(
     probe_ctx.set("host", host)?;
     globals.set("__pulseusage_ctx", probe_ctx)?;
 
-    Ok(())
-}
-
-fn inject_log<'js>(ctx: &Ctx<'js>, host: &Object<'js>, plugin_id: &str) -> rquickjs::Result<()> {
-    let log_obj = Object::new(ctx.clone())?;
-
-    let pid = plugin_id.to_string();
-    log_obj.set(
-        "info",
-        Function::new(ctx.clone(), move |msg: String| {
-            log::info!("[plugin:{}] {}", pid, crate::plugin_engine::redaction::redact_log_message(&msg));
-        })?,
-    )?;
-
-    let pid = plugin_id.to_string();
-    log_obj.set(
-        "warn",
-        Function::new(ctx.clone(), move |msg: String| {
-            log::warn!("[plugin:{}] {}", pid, crate::plugin_engine::redaction::redact_log_message(&msg));
-        })?,
-    )?;
-
-    let pid = plugin_id.to_string();
-    log_obj.set(
-        "error",
-        Function::new(ctx.clone(), move |msg: String| {
-            log::error!("[plugin:{}] {}", pid, crate::plugin_engine::redaction::redact_log_message(&msg));
-        })?,
-    )?;
-
-    host.set("log", log_obj)?;
     Ok(())
 }
 
