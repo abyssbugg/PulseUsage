@@ -115,7 +115,7 @@ These features are user-facing and can mislead users if based on weak data. They
 
 PR-1 may begin when:
 
-1. This ADR is merged.
+1. This ADR is approved, either before PR-1 or as part of the same PR.
 2. The implementation roadmap reflects the official PR ordering.
 3. Engineering principles are documented.
 4. Planning docs consistently state optional metadata and display compatibility.

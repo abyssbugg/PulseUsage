@@ -334,21 +334,7 @@ fn run_probe_with_timeout(
             Ok(_) => vec![error_line("no lines returned".to_string())],
             Err(msg) => vec![error_line(msg)],
         };
-        let capabilities = match parse_capabilities(&result) {
-            Ok(capabilities) => capabilities,
-            Err(msg) => {
-                let lines = vec![error_line(msg)];
-                return PluginOutput {
-                    provider_id: plugin_id,
-                    display_name,
-                    plan,
-                    capabilities: None,
-                    diagnostics: build_diagnostics(plugin, &lines, diagnostics_recorder.snapshot()),
-                    lines,
-                    icon_url,
-                };
-            }
-        };
+        let capabilities = parse_capabilities(&result).unwrap_or(None);
 
         PluginOutput {
             provider_id: plugin_id,
@@ -1458,10 +1444,11 @@ mod tests {
         );
 
         assert!(output.capabilities.is_none());
-        assert_eq!(
-            error_text(output),
-            "capability models has invalid status 'definitely'"
-        );
+        assert_eq!(output.lines.len(), 1);
+        assert!(matches!(
+            output.lines.first(),
+            Some(MetricLine::Badge { label, text, .. }) if label == "Status" && text == "Connected"
+        ));
     }
 
     #[test]
@@ -1705,7 +1692,7 @@ mod tests {
     }
 
     #[test]
-    fn run_probe_invalid_capability_status_fails_safely() {
+    fn run_probe_invalid_capability_status_drops_only_capabilities() {
         let plugin = test_plugin(
             r#"
             globalThis.__pulseusage_plugin = {
@@ -1725,12 +1712,11 @@ mod tests {
             output.capabilities.is_none(),
             "invalid capabilities must be dropped, not propagated"
         );
-        let err = error_text(output);
-        assert!(
-            err.contains("invalid status"),
-            "error should mention invalid status: {}",
-            err
-        );
+        assert_eq!(output.lines.len(), 1);
+        assert!(matches!(
+            output.lines.first(),
+            Some(MetricLine::Text { label, value, .. }) if label == "Status" && value == "ok"
+        ));
     }
 
     #[test]
@@ -1752,9 +1738,10 @@ mod tests {
         let output = run_probe(&plugin, &temp_app_dir("caps-non-string-detail"), "0.0.0");
 
         assert!(output.capabilities.is_none());
-        assert_eq!(
-            error_text(output),
-            "capability models details must be a string"
-        );
+        assert_eq!(output.lines.len(), 1);
+        assert!(matches!(
+            output.lines.first(),
+            Some(MetricLine::Text { label, value, .. }) if label == "Status" && value == "ok"
+        ));
     }
 }

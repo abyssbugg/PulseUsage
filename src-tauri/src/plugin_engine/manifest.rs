@@ -1,5 +1,5 @@
 use base64::{Engine, engine::general_purpose::STANDARD};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -46,8 +46,9 @@ fn validate_capability(name: &str, capability: &Option<ProviderCapability>) -> R
     let Some(capability) = capability else {
         return Ok(());
     };
+    let status = capability.status.trim();
     if !matches!(
-        capability.status.as_str(),
+        status,
         "supported" | "unsupported" | "partial" | "planned" | "undocumented"
     ) {
         return Err(format!(
@@ -88,10 +89,27 @@ pub struct PluginManifest {
     pub entry: String,
     pub icon: String,
     pub brand_color: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_optional_capabilities")]
     pub capabilities: Option<ProviderCapabilities>,
     pub lines: Vec<ManifestLine>,
     #[serde(default)]
     pub links: Vec<PluginLink>,
+}
+
+fn deserialize_optional_capabilities<'de, D>(
+    deserializer: D,
+) -> Result<Option<ProviderCapabilities>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<serde_json::Value>::deserialize(deserializer)?;
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    match serde_json::from_value::<ProviderCapabilities>(value) {
+        Ok(capabilities) => Ok(Some(capabilities)),
+        Err(_) => Ok(None),
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -492,6 +510,30 @@ mod tests {
     }
 
     #[test]
+    fn malformed_capabilities_parse_as_absent() {
+        let manifest = parse_manifest(
+            r#"
+            {
+              "schemaVersion": 1,
+              "id": "x",
+              "name": "X",
+              "version": "0.0.1",
+              "entry": "plugin.js",
+              "icon": "icon.svg",
+              "brandColor": null,
+              "capabilities": {
+                "models": "bad-shape"
+              },
+              "lines": [
+                { "type": "progress", "label": "A", "scope": "overview", "primaryOrder": 1 }
+              ]
+            }
+            "#,
+        );
+        assert!(manifest.capabilities.is_none());
+    }
+
+    #[test]
     fn invalid_capability_status_is_rejected_by_validate() {
         let caps = ProviderCapabilities {
             models: Some(ProviderCapability {
@@ -512,6 +554,19 @@ mod tests {
             "error should name the bad status: {}",
             err
         );
+    }
+
+    #[test]
+    fn capability_status_validation_trims_whitespace() {
+        let caps = ProviderCapabilities {
+            models: Some(ProviderCapability {
+                status: " supported ".to_string(),
+                details: None,
+                docs_url: None,
+            }),
+            ..Default::default()
+        };
+        assert!(caps.validate().is_ok());
     }
 
     #[test]
