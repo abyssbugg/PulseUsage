@@ -231,8 +231,11 @@ Base URLs tried in order:
 
 For `agy`, PulseUsage calls:
 
-1. `POST /v1internal:loadCodeAssist`
-2. `POST /v1internal:retrieveUserQuota`
+1. `POST /v1internal:retrieveUserQuotaSummary` (authoritative when available)
+2. `POST /v1internal:loadCodeAssist` (plan lookup for summary; legacy fallback entry)
+3. `POST /v1internal:retrieveUserQuota` (legacy 5h-only fallback)
+
+The language server probe uses the same order: `RetrieveUserQuotaSummary` first, then `GetUserStatus` / `GetCommandModelConfigs`.
 
 #### Response
 
@@ -258,20 +261,36 @@ The response includes all models provisioned for the account. The plugin filters
 
 The Cloud Code model set is a superset of the LS model set. The LS returns only cascade-configured chat models, Cloud Code includes all provisioned models. This difference is expected.
 
+## Quota summary (authoritative)
+
+`RetrieveUserQuotaSummary` reports merged pools with rolling 5-hour and weekly windows. Known `bucketId` values:
+
+| bucketId | Label | Window |
+|---|---|---|
+| `gemini-5h` | Session | 5 hours |
+| `gemini-weekly` | Weekly | 7 days |
+| `3p-5h` | Claude | 5 hours |
+| `3p-weekly` | Claude Weekly | 7 days |
+
+A parsed summary — even one with zero usable buckets — is authoritative and must not fall through to legacy endpoints (which fabricate fully-used meters from missing quota info).
+
+Legacy per-model endpoints collapse Gemini Pro/Flash into one **Session** pool and all non-Gemini models into **Claude** (5h only; weekly lines absent).
+
 ## Metric classification
 
 | Metric | Classification | Evidence |
 |---|---|---|
-| Gemini Pro | Optional | Docs state model lists are dynamic; tests cover this group when matching model configs exist. |
-| Gemini Flash | Optional | Docs state model lists are dynamic; tests cover this group when matching model configs exist. |
-| Claude | Optional | Docs state model lists are dynamic; tests cover this group when matching Claude configs exist. |
+| Session | Optional | Summary + legacy pool merge; fixture-backed when quota data exists. |
+| Weekly | Optional | Summary-only weekly Gemini pool; absent on legacy fallback. |
+| Claude | Optional | Summary + legacy pool merge; fixture-backed when quota data exists. |
+| Claude Weekly | Optional | Summary-only weekly non-Gemini pool; absent on legacy fallback. |
 
 ## Plugin Strategy
 
-1. Probe the Antigravity app/IDE language server.
-2. Probe the `agy` local language server.
+1. Probe the Antigravity app/IDE language server (`RetrieveUserQuotaSummary` first).
+2. Probe the `agy` local language server (same summary-first order).
 3. Read SQLite token candidates from both Antigravity state DB paths.
-4. Try unexpired SQLite/cached access tokens with `fetchAvailableModels`.
+4. Try unexpired SQLite/cached access tokens with `retrieveUserQuotaSummary`, then `fetchAvailableModels` legacy fallback.
 5. Refresh SQLite refresh tokens only after auth failure or when no access token exists.
-6. Read `agy` keychain token from service `gemini`, account `antigravity`, then call `loadCodeAssist` and `retrieveUserQuota`.
+6. Read `agy` keychain token from service `gemini`, account `antigravity`, then call summary → legacy Cloud Code chain.
 7. If all strategies fail: error "Start Antigravity or run `agy` and try again."

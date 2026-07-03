@@ -24,14 +24,14 @@ Classification values:
 ## Antigravity
 - Version: 0.0.1
 - Live verified: No current live audit; docs/tests only.
-- Fixture coverage: All manifest lines covered by local/Cloud Code fixtures.
+- Fixture coverage: All manifest lines covered by summary and legacy fixtures.
 - Risk level: High.
-- Known evidence gaps: Dynamic model list; no live account capture in current audit set.
-- Metric classifications: Gemini Pro=optional; Gemini Flash=optional; Claude=optional.
+- Known evidence gaps: No sanitized live `RetrieveUserQuotaSummary` capture in current audit set.
+- Metric classifications: Session=optional; Weekly=optional; Claude=optional; Claude Weekly=optional.
 - Last audit date: None recorded.
-- Last validation date: 2026-06-07 fixture/docs validation.
-- Notes: Behavior is proven for fixture-backed model groups only.
-- Follow-up actions: Capture sanitized live provider shape before promoting any model group to required.
+- Last validation date: 2026-07-02 fixture/docs validation.
+- Notes: Summary path aligned with OpenUsage v0.7.2; weekly lines are summary-only.
+- Follow-up actions: Capture sanitized live summary shape before promoting any line to required.
 
 ## Claude
 - Version: 0.0.1

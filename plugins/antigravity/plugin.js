@@ -13,6 +13,7 @@
   var LOAD_CODE_ASSIST_PATH = "/v1internal:loadCodeAssist"
   var FETCH_MODELS_PATH = "/v1internal:fetchAvailableModels"
   var RETRIEVE_QUOTA_PATH = "/v1internal:retrieveUserQuota"
+  var RETRIEVE_QUOTA_SUMMARY_PATH = "/v1internal:retrieveUserQuotaSummary"
   var LOGIN_MESSAGE = "Start Antigravity or run `agy` and try again."
   var GOOGLE_OAUTH_URL = "https://oauth2.googleapis.com/token"
   var GOOGLE_CLIENT_ID = "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com"
@@ -337,6 +338,12 @@
   }
 
   function callLs(ctx, port, scheme, csrf, method, body) {
+    var resp = callLsRaw(ctx, port, scheme, csrf, method, body)
+    if (!resp || resp.status < 200 || resp.status >= 300) return null
+    return ctx.util.tryParseJson(resp.bodyText)
+  }
+
+  function callLsRaw(ctx, port, scheme, csrf, method, body) {
     var resp = ctx.host.http.request({
       method: "POST",
       url: scheme + "://127.0.0.1:" + port + "/" + LS_SERVICE + "/" + method,
@@ -349,11 +356,53 @@
       timeoutMs: 10000,
       dangerouslyIgnoreTls: scheme === "https",
     })
+    if (!resp || typeof resp.status !== "number" || !Number.isFinite(resp.status)) return null
     if (resp.status < 200 || resp.status >= 300) {
       ctx.host.log.warn("callLs " + method + " returned " + resp.status)
-      return null
     }
-    return ctx.util.tryParseJson(resp.bodyText)
+    return resp
+  }
+
+  function readLsPlanFromUserStatus(data) {
+    if (!data || !data.userStatus) return null
+    var ut = data.userStatus.userTier
+    var userTierName =
+      ut && typeof ut.name === "string" && ut.name.trim() ? ut.name.trim() : null
+    if (userTierName) return userTierName
+    var ps = data.userStatus.planStatus || {}
+    var pi = ps.planInfo || {}
+    return typeof pi.planName === "string" && pi.planName.trim() ? pi.planName.trim() : null
+  }
+
+  function tryLsQuotaSummary(ctx, port, scheme, csrf, metadata) {
+    var resp = callLsRaw(ctx, port, scheme, csrf, "RetrieveUserQuotaSummary", { metadata: metadata })
+    if (!resp) return { kind: "unavailable" }
+    if (resp.status === 404) return { kind: "missing" }
+    if (resp.status < 200 || resp.status >= 300) return { kind: "unavailable" }
+
+    var json = ctx.util.tryParseJson(resp.bodyText)
+    if (!json || typeof json !== "object") {
+      ctx.host.log.warn("RetrieveUserQuotaSummary returned undecodable JSON")
+      return { kind: "unavailable" }
+    }
+    var summaryEntries = parseQuotaSummary(ctx, json)
+    if (summaryEntries === null) {
+      ctx.host.log.warn("RetrieveUserQuotaSummary response has no decodable groups")
+      return { kind: "unavailable" }
+    }
+
+    var plan = null
+    var statusResp = callLsRaw(ctx, port, scheme, csrf, "GetUserStatus", { metadata: metadata })
+    if (statusResp && statusResp.status >= 200 && statusResp.status < 300) {
+      var statusJson = ctx.util.tryParseJson(statusResp.bodyText)
+      plan = readLsPlanFromUserStatus(statusJson)
+    }
+
+    return {
+      kind: "summary",
+      plan: plan,
+      lines: buildQuotaSummaryLines(ctx, summaryEntries),
+    }
   }
 
   // --- Line builders ---
@@ -363,27 +412,32 @@
     return label.replace(/\s*\([^)]*\)\s*$/, "").trim()
   }
 
+  var SESSION_LABEL = "Session"
+  var WEEKLY_LABEL = "Weekly"
+  var CLAUDE_LABEL = "Claude"
+  var CLAUDE_WEEKLY_LABEL = "Claude Weekly"
+
   function poolLabel(normalizedLabel) {
-    var lower = normalizedLabel.toLowerCase()
-    if (lower.indexOf("gemini") !== -1 && lower.indexOf("pro") !== -1) return "Gemini Pro"
-    if (lower.indexOf("gemini") !== -1 && lower.indexOf("flash") !== -1) return "Gemini Flash"
-    // All non-Gemini models (Claude, GPT-OSS, etc.) share a single quota pool
-    return "Claude"
+    // Gemini Pro and Flash share one pool since Antigravity's 2026-05-19 quota merge.
+    if (normalizedLabel.toLowerCase().indexOf("gemini") !== -1) return SESSION_LABEL
+    return CLAUDE_LABEL
   }
 
-  function modelSortKey(label) {
-    var lower = label.toLowerCase()
-    // Gemini Pro variants first, then other Gemini, then Claude Opus, then other Claude, then rest
-    if (lower.indexOf("gemini") !== -1 && lower.indexOf("pro") !== -1) return "0a_" + label
-    if (lower.indexOf("gemini") !== -1) return "0b_" + label
-    if (lower.indexOf("claude") !== -1 && lower.indexOf("opus") !== -1) return "1a_" + label
-    if (lower.indexOf("claude") !== -1) return "1b_" + label
-    return "2_" + label
+  function poolSortKey(label) {
+    return label === SESSION_LABEL ? "0_" + label : "1_" + label
   }
 
   var QUOTA_PERIOD_MS = 5 * 60 * 60 * 1000 // 5 hours
+  var WEEKLY_PERIOD_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
-  function modelLine(ctx, label, remainingFraction, resetTime) {
+  var SUMMARY_BUCKETS = [
+    { bucketId: "gemini-5h", label: SESSION_LABEL, periodMs: QUOTA_PERIOD_MS },
+    { bucketId: "gemini-weekly", label: WEEKLY_LABEL, periodMs: WEEKLY_PERIOD_MS },
+    { bucketId: "3p-5h", label: CLAUDE_LABEL, periodMs: QUOTA_PERIOD_MS },
+    { bucketId: "3p-weekly", label: CLAUDE_WEEKLY_LABEL, periodMs: WEEKLY_PERIOD_MS },
+  ]
+
+  function poolLine(ctx, label, remainingFraction, resetTime, periodMs) {
     var clamped = Math.max(0, Math.min(1, remainingFraction))
     var used = Math.round((1 - clamped) * 100)
     return ctx.line.progress({
@@ -392,8 +446,87 @@
       limit: 100,
       format: { kind: "percent" },
       resetsAt: resetTime || undefined,
-      periodDurationMs: QUOTA_PERIOD_MS,
+      periodDurationMs: periodMs || QUOTA_PERIOD_MS,
     })
+  }
+
+  function modelLine(ctx, label, remainingFraction, resetTime) {
+    return poolLine(ctx, label, remainingFraction, resetTime, QUOTA_PERIOD_MS)
+  }
+
+  function parseQuotaSummaryGroups(data) {
+    if (!data || typeof data !== "object") return null
+    var groups = null
+    if (data.response && typeof data.response === "object" && Array.isArray(data.response.groups)) {
+      groups = data.response.groups
+    } else if (Array.isArray(data.groups)) {
+      groups = data.groups
+    } else {
+      return null
+    }
+    return groups
+  }
+
+  function parseQuotaSummary(ctx, data) {
+    var groups = parseQuotaSummaryGroups(data)
+    if (groups === null) return null
+
+    var pooled = {}
+    for (var gi = 0; gi < groups.length; gi++) {
+      var group = groups[gi]
+      if (!group || typeof group !== "object") continue
+      var buckets = group.buckets
+      if (!Array.isArray(buckets)) continue
+      for (var bi = 0; bi < buckets.length; bi++) {
+        var bucket = buckets[bi]
+        if (!bucket || typeof bucket !== "object") continue
+        var bucketId = typeof bucket.bucketId === "string" ? bucket.bucketId : ""
+        if (!bucketId || pooled[bucketId]) continue
+        var spec = null
+        for (var si = 0; si < SUMMARY_BUCKETS.length; si++) {
+          if (SUMMARY_BUCKETS[si].bucketId === bucketId) {
+            spec = SUMMARY_BUCKETS[si]
+            break
+          }
+        }
+        if (!spec) {
+          ctx.host.log.warn("quota summary: skipping unrecognized bucket id '" + bucketId + "'")
+          continue
+        }
+        if (typeof bucket.remainingFraction !== "number" || !Number.isFinite(bucket.remainingFraction)) {
+          ctx.host.log.warn("quota summary: bucket '" + bucketId + "' has no usable remainingFraction")
+          continue
+        }
+        pooled[bucketId] = {
+          remainingFraction: bucket.remainingFraction,
+          resetTime: typeof bucket.resetTime === "string" ? bucket.resetTime : undefined,
+          spec: spec,
+        }
+      }
+    }
+
+    var lines = []
+    for (var i = 0; i < SUMMARY_BUCKETS.length; i++) {
+      var bucketSpec = SUMMARY_BUCKETS[i]
+      var entry = pooled[bucketSpec.bucketId]
+      if (!entry) continue
+      lines.push({
+        label: bucketSpec.label,
+        remainingFraction: entry.remainingFraction,
+        resetTime: entry.resetTime,
+        periodMs: bucketSpec.periodMs,
+      })
+    }
+    return lines
+  }
+
+  function buildQuotaSummaryLines(ctx, summaryEntries) {
+    var lines = []
+    for (var i = 0; i < summaryEntries.length; i++) {
+      var entry = summaryEntries[i]
+      lines.push(poolLine(ctx, entry.label, entry.remainingFraction, entry.resetTime, entry.periodMs))
+    }
+    return lines
   }
 
   function buildModelLines(ctx, configs) {
@@ -419,7 +552,7 @@
     var keys = Object.keys(deduped)
     for (var i = 0; i < keys.length; i++) {
       var m = deduped[keys[i]]
-      m.sortKey = modelSortKey(m.label)
+      m.sortKey = poolSortKey(m.label)
       models.push(m)
     }
 
@@ -471,7 +604,31 @@
     return null
   }
 
+  function tryCloudCodeQuotaSummary(ctx, token, userAgent) {
+    var data = requestCloudCodeJson(ctx, RETRIEVE_QUOTA_SUMMARY_PATH, token, userAgent, {})
+    if (!data) return { kind: "unavailable" }
+    if (data._authFailed) return { kind: "authFailed" }
+
+    var summaryEntries = parseQuotaSummary(ctx, data)
+    if (summaryEntries === null) return { kind: "unavailable" }
+
+    var plan = null
+    var loadData = requestCloudCodeJson(ctx, LOAD_CODE_ASSIST_PATH, token, userAgent, {})
+    if (loadData && !loadData._authFailed) plan = readAgyPlan(loadData)
+
+    return {
+      kind: "summary",
+      plan: plan,
+      lines: buildQuotaSummaryLines(ctx, summaryEntries),
+    }
+  }
+
   function probeCloudCode(ctx, token, userAgent) {
+    var summaryResult = tryCloudCodeQuotaSummary(ctx, token, userAgent)
+    if (summaryResult.kind === "summary") {
+      return { plan: summaryResult.plan, lines: summaryResult.lines }
+    }
+    if (summaryResult.kind === "authFailed") return { _authFailed: true }
     return requestCloudCodeJson(ctx, FETCH_MODELS_PATH, token, userAgent, {})
   }
 
@@ -533,6 +690,12 @@
   }
 
   function probeAgyCloudCode(ctx, token) {
+    var summaryResult = tryCloudCodeQuotaSummary(ctx, token, "agy")
+    if (summaryResult.kind === "summary") {
+      return { plan: summaryResult.plan, lines: summaryResult.lines }
+    }
+    if (summaryResult.kind === "authFailed") return { _authFailed: true }
+
     var loadData = requestCloudCodeJson(ctx, LOAD_CODE_ASSIST_PATH, token, "agy", {})
     if (!loadData || loadData._authFailed) return loadData
 
@@ -571,6 +734,11 @@
       locale: "en",
     }
 
+    var summaryResult = tryLsQuotaSummary(ctx, found.port, found.scheme, discovery.csrf, metadata)
+    if (summaryResult.kind === "summary") {
+      return { plan: summaryResult.plan, lines: summaryResult.lines }
+    }
+
     // Try GetUserStatus first, fall back to GetCommandModelConfigs
     var data = null
     try {
@@ -605,23 +773,7 @@
     var lines = buildModelLines(ctx, filtered)
     if (lines.length === 0) return null
 
-    var plan = null
-    if (hasUserStatus) {
-      // Prefer userTier.name (Google's own subscription system) over the legacy
-      // planInfo.planName field inherited from Windsurf/Codeium, which always
-      // returns "Pro" for all paid tiers including Google AI Ultra.
-      var ut = data.userStatus.userTier
-      var userTierName =
-        ut && typeof ut.name === "string" && ut.name.trim() ? ut.name.trim() : null
-      if (userTierName) {
-        plan = userTierName
-      } else {
-        var ps = data.userStatus.planStatus || {}
-        var pi = ps.planInfo || {}
-        plan =
-          typeof pi.planName === "string" && pi.planName.trim() ? pi.planName.trim() : null
-      }
-    }
+    var plan = hasUserStatus ? readLsPlanFromUserStatus(data) : null
 
     return { plan: plan, lines: lines }
   }
@@ -700,6 +852,9 @@
     }
 
     if (ccData && !ccData._authFailed) {
+      if (Array.isArray(ccData.lines)) {
+        return { plan: ccData.plan || null, lines: ccData.lines }
+      }
       var configs = parseCloudCodeModels(ccData)
       var lines = buildModelLines(ctx, configs)
       if (lines.length > 0) return { plan: null, lines: lines }
