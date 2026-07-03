@@ -1,3 +1,5 @@
+pub mod shared;
+pub mod redaction;
 pub mod diagnostics;
 pub mod host_api;
 pub mod manifest;

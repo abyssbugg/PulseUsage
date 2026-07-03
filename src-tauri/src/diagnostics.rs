@@ -22,7 +22,7 @@ use tauri::{AppHandle, Manager};
 use time::format_description::well_known::Rfc3339;
 
 use crate::log_path;
-use crate::plugin_engine::host_api::redact_log_message;
+use crate::plugin_engine::redaction::redact_log_message;
 
 const DIAGNOSTICS_SUBDIR: &str = "diagnostics";
 
