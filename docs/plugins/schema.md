@@ -49,6 +49,11 @@ Bundled plugins live under `src-tauri/resources/bundled_plugins/<id>/`.
   "entry": "plugin.js",
   "icon": "icon.svg",
   "links": [{ "label": "Status", "url": "https://status.example.com" }],
+  "capabilities": {
+    "models": { "status": "supported", "docsUrl": "https://docs.example.com/models" },
+    "accountUsage": { "status": "undocumented", "details": "No public account usage API" },
+    "billing": { "status": "unsupported" }
+  },
   "lines": [
     { "type": "badge", "label": "Plan", "scope": "overview", "classification": "optional" },
     { "type": "progress", "label": "Usage", "scope": "overview", "classification": "required", "primaryOrder": 1 },
@@ -66,6 +71,7 @@ Bundled plugins live under `src-tauri/resources/bundled_plugins/<id>/`.
 | `entry`         | string | Yes      | Relative path to JS entry file             |
 | `icon`          | string | Yes      | Relative path to SVG icon file             |
 | `links`         | array  | No       | Optional quick links shown on detail page  |
+| `capabilities`  | object | No       | Optional provider capability metadata      |
 | `lines`         | array  | Yes      | Output shape used for loading skeletons    |
 
 Validation rules:
@@ -75,6 +81,7 @@ Validation rules:
 - `id` must match `globalThis.__pulseusage_plugin.id`
 - `icon` must be relative and point to an SVG file (use `fill="currentColor"` for theme compatibility)
 - `links[].url` (if provided) must be an `http://` or `https://` URL
+- `capabilities.*.status` must be one of `supported`, `unsupported`, `partial`, `planned`, or `undocumented`
 
 ### Links Array (Optional)
 
@@ -82,6 +89,39 @@ Validation rules:
 |---------|--------|----------|-------------|
 | `label` | string | Yes      | Link text shown in the provider detail quick-actions row |
 | `url`   | string | Yes      | External destination opened in the browser (`http/https` only) |
+
+### Capabilities Object (Optional)
+
+`capabilities` describes provider surfaces without changing runtime behavior. It is metadata only. Existing plugins may omit it.
+
+Supported capability keys:
+
+| Key | Description |
+|-----|-------------|
+| `models` | Whether the provider exposes model discovery. |
+| `accountUsage` | Whether the provider exposes account-level usage. |
+| `billing` | Whether the provider exposes billing or balance information. |
+| `rateLimits` | Whether the provider exposes rate-limit information. |
+| `organizations` | Whether the provider exposes organization or team account support. |
+| `responseUsageMetrics` | Whether individual responses include usage metrics. |
+
+Each capability value has this shape:
+
+```typescript
+type ProviderCapability = {
+  status: "supported" | "unsupported" | "partial" | "planned" | "undocumented"
+  details?: string
+  docsUrl?: string
+}
+```
+
+Rules:
+
+- Omit unknown capabilities instead of guessing.
+- Use `undocumented` when no public provider API is documented.
+- Use `partial` when only some data is available.
+- Do not include credentials, account IDs, organization IDs, emails, raw error payloads, or raw provider responses.
+- Capabilities are not usage observations and must not include usage values, quotas, budgets, reset windows, or historical data.
 
 ## Output Shape Declaration
 
@@ -180,8 +220,10 @@ const value = ctx.host.keychain.readGenericPasswordForCurrentUser("my-service")
 `probe(ctx)` must return (or resolve to):
 
 ```javascript
-{ lines: MetricLine[] }
+{ lines: MetricLine[], capabilities?: ProviderCapabilities }
 ```
+
+Runtime `capabilities` has the same shape as manifest `capabilities`. It is optional and does not affect display line rendering.
 
 ### Line Types
 

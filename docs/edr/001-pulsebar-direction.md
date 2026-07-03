@@ -142,3 +142,6 @@ Bundle ID change = manual upgrade from 0.6.x. Settings migrate on first launch. 
 
 - Implementation plan: [IMP-001](../imp/001-implementation-master-plan.md)
 - Readiness review: [IRR-001](../imp/002-irr-readiness-review.md)
+- Provider and usage ADR: [ADR-001](../adr/001-pulsebar-v1-provider-usage-baseline.md)
+- Provider usage architecture roadmap: [IMP-003](../imp/003-provider-usage-architecture-roadmap.md)
+- Provider usage implementation roadmap: [IMP-004](../imp/004-provider-usage-implementation-roadmap.md)

@@ -63,6 +63,8 @@ pub struct PluginMeta {
     pub version: String,
     pub icon_url: String,
     pub brand_color: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub capabilities: Option<plugin_engine::manifest::ProviderCapabilities>,
     pub lines: Vec<ManifestLineDto>,
     pub links: Vec<PluginLinkDto>,
     /// Ordered list of primary metric candidates (sorted by primaryOrder).
@@ -384,6 +386,7 @@ fn list_plugins(state: tauri::State<'_, Mutex<AppState>>) -> Vec<PluginMeta> {
                 version: plugin.manifest.version,
                 icon_url: plugin.icon_data_url,
                 brand_color: plugin.manifest.brand_color,
+                capabilities: plugin.manifest.capabilities,
                 lines: plugin
                     .manifest
                     .lines

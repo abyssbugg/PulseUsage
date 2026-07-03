@@ -5,6 +5,7 @@
 | **Status** | Approved (IRR amendments integrated) |
 | **Baseline** | [EDR-001](../edr/001-pulsebar-direction.md) |
 | **IRR** | [IRR-001](002-irr-readiness-review.md) |
+| **Provider Usage Baseline** | [ADR-001](../adr/001-pulsebar-v1-provider-usage-baseline.md), [IMP-004](004-provider-usage-implementation-roadmap.md) |
 
 ## Executive Summary
 
@@ -179,3 +180,19 @@ See [EDR-001 §v1.0](../edr/001-pulsebar-direction.md).
 ## Authorized next step
 
 **Phase 1** after Gate G0 ✅ and explicit Phase 1 approval.
+
+## Related Provider Usage Roadmap
+
+Provider capability, Ollama Cloud, semantic usage, persistence, provider upgrades, budgets, and forecasting work is governed by [ADR-001](../adr/001-pulsebar-v1-provider-usage-baseline.md), [IMP-003](003-provider-usage-architecture-roadmap.md), and [IMP-004](004-provider-usage-implementation-roadmap.md).
+
+Official provider usage PR order:
+
+| PR | Theme |
+|----|-------|
+| PR-1 | Provider capability contracts |
+| PR-2 | Ollama provider |
+| PR-3 | Usage observations |
+| PR-4 | SQLite persistence |
+| PR-5 | Provider upgrades |
+| PR-6 | Budgets and alerts |
+| PR-7 | Forecasting and history |
