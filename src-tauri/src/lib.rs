@@ -475,7 +475,7 @@ pub fn run() {
                 .and_then(|value| value.to_str())
                 .unwrap_or("unknown");
             let redacted_app_data_dir =
-                plugin_engine::host_api::redact_log_message(&app_data_dir.display().to_string());
+                plugin_engine::redaction::redact_log_message(&app_data_dir.display().to_string());
             log::debug!(
                 "app_data_dir: tail={}, path={}",
                 app_data_dir_tail,

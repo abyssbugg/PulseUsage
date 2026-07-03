@@ -85,9 +85,6 @@ fn log_probe_deadline_skip(plugin_id: &str, operation: &str) {
     );
 }
 
-fn probe_timeout_error<'js>(ctx: &Ctx<'js>) -> rquickjs::Error {
-    Exception::throw_message(ctx, "probe timed out")
-}
 
 fn last_non_empty_trimmed_line(text: &str) -> Option<String> {
     text.lines()
@@ -301,208 +298,6 @@ fn resolve_env_value(name: &str) -> Option<String> {
 }
 
 /// Redact sensitive value to first4...last4 format (UTF-8 safe)
-fn redact_value(value: &str) -> String {
-    let chars: Vec<char> = value.chars().collect();
-    if chars.len() <= 12 {
-        "[REDACTED]".to_string()
-    } else {
-        let first4: String = chars.iter().take(4).collect();
-        let last4: String = chars
-            .iter()
-            .rev()
-            .take(4)
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
-            .collect();
-        format!("{}...{}", first4, last4)
-    }
-}
-
-/// Redact sensitive query parameters in URL
-fn redact_url(url: &str) -> String {
-    let sensitive_params = [
-        "key",
-        "api_key",
-        "apikey",
-        "token",
-        "access_token",
-        "secret",
-        "password",
-        "auth",
-        "authorization",
-        "bearer",
-        "credential",
-        "user",
-        "user_id",
-        "userid",
-        "account_id",
-        "accountid",
-        "profilearn",
-        "profile_arn",
-        "email",
-        "login",
-    ];
-
-    if let Some(query_start) = url.find('?') {
-        let (base, query) = url.split_at(query_start + 1);
-        let redacted_params: Vec<String> = query
-            .split('&')
-            .map(|param| {
-                if let Some(eq_pos) = param.find('=') {
-                    let (name, value) = param.split_at(eq_pos);
-                    let value = &value[1..]; // skip '='
-                    let name_lower = name.to_lowercase();
-                    if sensitive_params.iter().any(|s| name_lower.contains(s)) && !value.is_empty()
-                    {
-                        format!("{}={}", name, redact_value(value))
-                    } else {
-                        param.to_string()
-                    }
-                } else {
-                    param.to_string()
-                }
-            })
-            .collect();
-        format!("{}{}", base, redacted_params.join("&"))
-    } else {
-        url.to_string()
-    }
-}
-
-/// Redact sensitive patterns in response body for logging
-fn redact_body(body: &str) -> String {
-    let mut result = body.to_string();
-
-    // Redact JWTs (eyJ... pattern with dots)
-    let jwt_pattern =
-        regex_lite::Regex::new(r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+").unwrap();
-    result = jwt_pattern
-        .replace_all(&result, |caps: &regex_lite::Captures| {
-            redact_value(&caps[0])
-        })
-        .to_string();
-
-    // Redact common API key patterns (sk-xxx, pk-xxx, api_xxx, etc.)
-    let api_key_pattern =
-        regex_lite::Regex::new(r#"["']?(sk-|pk-|api_|key_|secret_)[A-Za-z0-9_-]{12,}["']?"#)
-            .unwrap();
-    result = api_key_pattern
-        .replace_all(&result, |caps: &regex_lite::Captures| {
-            let key = caps[0].trim_matches(|c| c == '"' || c == '\'');
-            redact_value(key)
-        })
-        .to_string();
-
-    if let Ok(devin_session_re) = regex_lite::Regex::new(r#"devin-session-token\$[^\s"',}\]]+"#) {
-        result = devin_session_re
-            .replace_all(&result, |caps: &regex_lite::Captures| {
-                redact_value(&caps[0])
-            })
-            .to_string();
-    }
-
-    // Redact JSON values for sensitive keys
-    let sensitive_keys = [
-        "name",
-        "password",
-        "token",
-        "access_token",
-        "refresh_token",
-        "secret",
-        "api_key",
-        "apiKey",
-        "authorization",
-        "bearer",
-        "credential",
-        "session_token",
-        "sessionToken",
-        "auth_token",
-        "authToken",
-        "id_token",
-        "idToken",
-        "accessToken",
-        "refreshToken",
-        "user_id",
-        "userId",
-        "account_id",
-        "accountId",
-        "team_id",
-        "teamId",
-        "org_id",
-        "orgId",
-        "account_display_name",
-        "accountDisplayName",
-        "payment_id",
-        "paymentId",
-        "profile_arn",
-        "profileArn",
-        "email",
-        "login",
-        "analytics_tracking_id",
-    ];
-    for key in sensitive_keys {
-        // Match "key": "value" or "key":"value"
-        let pattern = format!(r#""{}":\s*"([^"]+)""#, key);
-        if let Ok(re) = regex_lite::Regex::new(&pattern) {
-            result = re
-                .replace_all(&result, |caps: &regex_lite::Captures| {
-                    let value = &caps[1];
-                    format!("\"{}\": \"{}\"", key, redact_value(value))
-                })
-                .to_string();
-        }
-    }
-
-    if let Ok(path_re) =
-        regex_lite::Regex::new(r#"(/(?:Users|home|opt|private|var|tmp|Applications)/[^\s"')]+)"#)
-    {
-        result = path_re.replace_all(&result, "[PATH]").to_string();
-    }
-
-    result
-}
-
-/// Lightweight redaction for log messages.
-pub(crate) fn redact_log_message(msg: &str) -> String {
-    let mut result = msg.to_string();
-    if let Ok(jwt_re) = regex_lite::Regex::new(r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+")
-    {
-        result = jwt_re
-            .replace_all(&result, |caps: &regex_lite::Captures| {
-                redact_value(&caps[0])
-            })
-            .to_string();
-    }
-    if let Ok(api_re) = regex_lite::Regex::new(r#"(sk-|pk-|api_|key_|secret_)[A-Za-z0-9_-]{12,}"#) {
-        result = api_re
-            .replace_all(&result, |caps: &regex_lite::Captures| {
-                redact_value(&caps[0])
-            })
-            .to_string();
-    }
-    if let Ok(devin_session_re) = regex_lite::Regex::new(r#"devin-session-token\$[^\s"',}\]]+"#) {
-        result = devin_session_re
-            .replace_all(&result, |caps: &regex_lite::Captures| {
-                redact_value(&caps[0])
-            })
-            .to_string();
-    }
-    if let Ok(account_re) = regex_lite::Regex::new(r#"(account=)([^,\s]+)"#) {
-        result = account_re
-            .replace_all(&result, |caps: &regex_lite::Captures| {
-                format!("{}{}", &caps[1], redact_value(&caps[2]))
-            })
-            .to_string();
-    }
-    if let Ok(path_re) =
-        regex_lite::Regex::new(r#"(/(?:Users|home|opt|private|var|tmp|Applications)/[^\s"')]+)"#)
-    {
-        result = path_re.replace_all(&result, "[PATH]").to_string();
-    }
-    result
-}
-
 fn decrypt_aes_256_gcm_envelope(envelope: &str, key_b64: &str) -> Result<String, String> {
     let trimmed_envelope = envelope.trim();
     let trimmed_key = key_b64.trim();
@@ -622,7 +417,7 @@ pub(crate) fn inject_host_api_with_deadline<'js>(
     let globals = ctx.globals();
     let probe_ctx = Object::new(ctx.clone())?;
 
-    probe_ctx.set("nowIso", iso_now())?;
+    probe_ctx.set("nowIso", crate::plugin_engine::shared::iso_now())?;
 
     let app_obj = Object::new(ctx.clone())?;
     app_obj.set("version", app_version)?;
@@ -679,7 +474,7 @@ fn inject_log<'js>(ctx: &Ctx<'js>, host: &Object<'js>, plugin_id: &str) -> rquic
     log_obj.set(
         "info",
         Function::new(ctx.clone(), move |msg: String| {
-            log::info!("[plugin:{}] {}", pid, redact_log_message(&msg));
+            log::info!("[plugin:{}] {}", pid, crate::plugin_engine::redaction::redact_log_message(&msg));
         })?,
     )?;
 
@@ -687,7 +482,7 @@ fn inject_log<'js>(ctx: &Ctx<'js>, host: &Object<'js>, plugin_id: &str) -> rquic
     log_obj.set(
         "warn",
         Function::new(ctx.clone(), move |msg: String| {
-            log::warn!("[plugin:{}] {}", pid, redact_log_message(&msg));
+            log::warn!("[plugin:{}] {}", pid, crate::plugin_engine::redaction::redact_log_message(&msg));
         })?,
     )?;
 
@@ -695,7 +490,7 @@ fn inject_log<'js>(ctx: &Ctx<'js>, host: &Object<'js>, plugin_id: &str) -> rquic
     log_obj.set(
         "error",
         Function::new(ctx.clone(), move |msg: String| {
-            log::error!("[plugin:{}] {}", pid, redact_log_message(&msg));
+            log::error!("[plugin:{}] {}", pid, crate::plugin_engine::redaction::redact_log_message(&msg));
         })?,
     )?;
 
@@ -714,7 +509,7 @@ fn inject_fs<'js>(
     fs_obj.set(
         "exists",
         Function::new(ctx.clone(), move |path: String| -> bool {
-            let expanded = expand_path(&path);
+            let expanded = crate::plugin_engine::shared::expand_path(&path);
             std::path::Path::new(&expanded).exists()
         })?,
     )?;
@@ -724,7 +519,7 @@ fn inject_fs<'js>(
         Function::new(
             ctx.clone(),
             move |ctx_inner: Ctx<'_>, path: String| -> rquickjs::Result<String> {
-                let expanded = expand_path(&path);
+                let expanded = crate::plugin_engine::shared::expand_path(&path);
                 match std::fs::read_to_string(&expanded) {
                     Ok(value) => {
                         read_text_recorder.record_local_read(true);
@@ -744,7 +539,7 @@ fn inject_fs<'js>(
         Function::new(
             ctx.clone(),
             move |ctx_inner: Ctx<'_>, path: String, content: String| -> rquickjs::Result<()> {
-                let expanded = expand_path(&path);
+                let expanded = crate::plugin_engine::shared::expand_path(&path);
                 std::fs::write(&expanded, &content)
                     .map_err(|e| Exception::throw_message(&ctx_inner, &e.to_string()))
             },
@@ -757,7 +552,7 @@ fn inject_fs<'js>(
         Function::new(
             ctx.clone(),
             move |ctx_inner: Ctx<'_>, path: String| -> rquickjs::Result<Vec<String>> {
-                let expanded = expand_path(&path);
+                let expanded = crate::plugin_engine::shared::expand_path(&path);
                 let entries = match std::fs::read_dir(&expanded) {
                     Ok(entries) => {
                         list_dir_recorder.record_local_read(true);
@@ -811,7 +606,7 @@ fn inject_plist<'js>(
                     ));
                 }
 
-                let expanded = expand_path(&path);
+                let expanded = crate::plugin_engine::shared::expand_path(&path);
                 let output = std::process::Command::new("plutil")
                     .args(["-convert", "json", "-o", "-", &expanded])
                     .output()
@@ -937,7 +732,7 @@ fn inject_http<'js>(
                 }
 
                 let method_str = req.method.as_deref().unwrap_or("GET");
-                let redacted_url = redact_url(&req.url);
+                let redacted_url = crate::plugin_engine::redaction::redact_url(&req.url);
                 log::info!("[plugin:{}] HTTP {} {}", pid, method_str, redacted_url);
                 diagnostics_recorder.record_http_attempt();
 
@@ -964,7 +759,7 @@ fn inject_http<'js>(
                 let timeout_ms = req.timeout_ms.unwrap_or(10_000);
                 let Some(timeout) = deadline.clamp_duration(Duration::from_millis(timeout_ms))
                 else {
-                    return Err(probe_timeout_error(&ctx_inner));
+                    return Err(crate::plugin_engine::shared::probe_timeout_error(&ctx_inner));
                 };
                 let mut builder = reqwest::blocking::Client::builder()
                     .timeout(timeout)
@@ -1033,7 +828,7 @@ fn inject_http<'js>(
                     .map_err(|e| Exception::throw_message(&ctx_inner, &e.to_string()))?;
 
                 // Redact BEFORE truncation to ensure sensitive values are caught while intact
-                let redacted_body = redact_body(&body);
+                let redacted_body = crate::plugin_engine::redaction::redact_body(&body);
                 let body_preview = if redacted_body.len() > 500 {
                     // UTF-8 safe truncation: find valid char boundary at or before 500
                     let truncated: String = redacted_body
@@ -2347,10 +2142,10 @@ fn run_ccusage_with_runner_timeout(
 
     if let Some(home_path) = ccusage_home_override(opts, provider) {
         let config = ccusage_provider_config(provider);
-        command.env(config.home_env_var, expand_path(&home_path));
+        command.env(config.home_env_var, crate::plugin_engine::shared::expand_path(&home_path));
     }
 
-    let redacted_program = redact_log_message(program);
+    let redacted_program = crate::plugin_engine::redaction::redact_log_message(program);
 
     log::info!(
         "[plugin:{}] ccusage query via {} {:?} ({})",
@@ -2634,7 +2429,7 @@ fn inject_keychain<'js>(
                         Some(trimmed.to_string())
                     }
                 });
-                let redacted_account = account.as_ref().map(|value| redact_value(value));
+                let redacted_account = account.as_ref().map(|value| crate::plugin_engine::redaction::redact_value(value));
                 if let Some(ref redacted) = redacted_account {
                     log::info!(
                         "[plugin:{}] keychain read: service={}, account={}",
@@ -2723,7 +2518,7 @@ fn inject_keychain<'js>(
                 }
                 let account = current_macos_keychain_account();
                 let args = keychain_find_generic_password_args_for_account(&service, &account);
-                let redacted_account = redact_value(&account);
+                let redacted_account = crate::plugin_engine::redaction::redact_value(&account);
                 log::info!(
                     "[plugin:{}] keychain read: service={}, account={}",
                     pid_read_current_user,
@@ -2859,7 +2654,7 @@ fn inject_keychain<'js>(
                 let account = current_macos_keychain_account();
                 let args =
                     keychain_add_generic_password_args_for_account(&service, &account, &value);
-                let redacted_account = redact_value(&account);
+                let redacted_account = crate::plugin_engine::redaction::redact_value(&account);
                 log::info!(
                     "[plugin:{}] keychain write: service={}, account={}",
                     pid_write_current_user,
@@ -2927,7 +2722,7 @@ fn inject_sqlite<'js>(
                         "sqlite3 dot-commands are not allowed",
                     ));
                 }
-                let expanded = expand_path(&db_path);
+                let expanded = crate::plugin_engine::shared::expand_path(&db_path);
 
                 // Prefer a normal read-only open so WAL contents are visible (common for app state DBs).
                 // Fall back to immutable=1 to bypass WAL/SHM lock issues after macOS sleep.
@@ -2994,7 +2789,7 @@ fn inject_sqlite<'js>(
                         "sqlite3 dot-commands are not allowed",
                     ));
                 }
-                let expanded = expand_path(&db_path);
+                let expanded = crate::plugin_engine::shared::expand_path(&db_path);
                 let output = std::process::Command::new("sqlite3")
                     .args([&expanded, &sql])
                     .output()
@@ -3020,28 +2815,6 @@ fn inject_sqlite<'js>(
     Ok(())
 }
 
-fn iso_now() -> String {
-    time::OffsetDateTime::now_utc()
-        .format(&time::format_description::well_known::Rfc3339)
-        .unwrap_or_else(|err| {
-            log::error!("nowIso format failed: {}", err);
-            "1970-01-01T00:00:00Z".to_string()
-        })
-}
-
-fn expand_path(path: &str) -> String {
-    if path == "~" {
-        if let Some(home) = dirs::home_dir() {
-            return home.to_string_lossy().to_string();
-        }
-    }
-    if path.starts_with("~/") {
-        if let Some(home) = dirs::home_dir() {
-            return home.join(&path[2..]).to_string_lossy().to_string();
-        }
-    }
-    path.to_string()
-}
 
 #[cfg(test)]
 mod tests {
@@ -3544,7 +3317,7 @@ mod tests {
         let home = dirs::home_dir().expect("home dir");
         let expected = home.join(".claude-custom").to_string_lossy().to_string();
 
-        assert_eq!(expand_path("~/.claude-custom"), expected);
+        assert_eq!(crate::plugin_engine::shared::expand_path("~/.claude-custom"), expected);
     }
 
     #[test]
@@ -3647,14 +3420,14 @@ mod tests {
 
     #[test]
     fn redact_value_shows_first_and_last_four() {
-        assert_eq!(redact_value("sk-1234567890abcdef"), "sk-1...cdef");
-        assert_eq!(redact_value("short"), "[REDACTED]");
+        assert_eq!(crate::plugin_engine::redaction::redact_value("sk-1234567890abcdef"), "sk-1...cdef");
+        assert_eq!(crate::plugin_engine::redaction::redact_value("short"), "[REDACTED]");
     }
 
     #[test]
     fn redact_url_redacts_api_key_param() {
         let url = "https://api.example.com/v1?api_key=sk-1234567890abcdef&other=value";
-        let redacted = redact_url(url);
+        let redacted = crate::plugin_engine::redaction::redact_url(url);
         assert!(redacted.contains("api_key=sk-1...cdef"));
         assert!(redacted.contains("other=value"));
     }
@@ -3662,7 +3435,7 @@ mod tests {
     #[test]
     fn redact_url_redacts_user_query_param() {
         let url = "https://cursor.com/api/usage?user=user_abcdefghijklmnopqrstuvwxyz&limit=10";
-        let redacted = redact_url(url);
+        let redacted = crate::plugin_engine::redaction::redact_url(url);
         assert!(
             redacted.contains("user=user...wxyz"),
             "user query param should be redacted, got: {}",
@@ -3678,13 +3451,13 @@ mod tests {
     #[test]
     fn redact_url_preserves_non_sensitive_params() {
         let url = "https://api.example.com/v1?limit=10&offset=20";
-        assert_eq!(redact_url(url), url);
+        assert_eq!(crate::plugin_engine::redaction::redact_url(url), url);
     }
 
     #[test]
     fn redact_url_redacts_profile_arn_query_param() {
         let url = "https://q.us-east-1.amazonaws.com/getUsageLimits?profileArn=arn:aws:codewhisperer:us-east-1:699475941385:profile/EHGA3GRVQMUK&origin=AI_EDITOR";
-        let redacted = redact_url(url);
+        let redacted = crate::plugin_engine::redaction::redact_url(url);
         assert!(
             !redacted.contains("699475941385"),
             "profileArn should be redacted, got: {}",
@@ -3700,7 +3473,7 @@ mod tests {
     #[test]
     fn redact_body_redacts_jwt() {
         let body = r#"{"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"}"#;
-        let redacted = redact_body(body);
+        let redacted = crate::plugin_engine::redaction::redact_body(body);
         // JWT gets redacted to first4...last4 format
         assert!(
             !redacted.contains("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"),
@@ -3712,14 +3485,14 @@ mod tests {
     #[test]
     fn redact_body_redacts_api_keys() {
         let body = r#"{"key": "sk-1234567890abcdefghij"}"#;
-        let redacted = redact_body(body);
+        let redacted = crate::plugin_engine::redaction::redact_body(body);
         assert!(redacted.contains("sk-1...ghij"));
     }
 
     #[test]
     fn redact_body_redacts_devin_session_token() {
         let body = r#"metadata apiKey=devin-session-token$abcdefghijklmnopqrstuvwxyz123456"#;
-        let redacted = redact_body(body);
+        let redacted = crate::plugin_engine::redaction::redact_body(body);
         assert!(
             !redacted.contains("devin-session-token$abcdefghijklmnopqrstuvwxyz123456"),
             "Devin session token should be redacted, got: {}",
@@ -3735,7 +3508,7 @@ mod tests {
     #[test]
     fn redact_body_redacts_json_password_field() {
         let body = r#"{"password": "supersecretpassword123"}"#;
-        let redacted = redact_body(body);
+        let redacted = crate::plugin_engine::redaction::redact_body(body);
         assert!(
             !redacted.contains("supersecretpassword123"),
             "password should be redacted, got: {}",
@@ -3746,7 +3519,7 @@ mod tests {
     #[test]
     fn redact_body_redacts_user_id_and_email() {
         let body = r#"{"user_id": "user-iupzZ7KFykMLrnzpkHSq7wjo", "email": "sample@example.com"}"#;
-        let redacted = redact_body(body);
+        let redacted = crate::plugin_engine::redaction::redact_body(body);
         assert!(
             !redacted.contains("user-iupzZ7KFykMLrnzpkHSq7wjo"),
             "user_id should be redacted, got: {}",
@@ -3773,7 +3546,7 @@ mod tests {
     #[test]
     fn redact_body_redacts_camel_case_user_and_account_ids() {
         let body = r#"{"userId": "user_abcdefghijklmnopqrstuvwxyz", "accountId": "acct_1234567890abcdef"}"#;
-        let redacted = redact_body(body);
+        let redacted = crate::plugin_engine::redaction::redact_body(body);
         assert!(
             !redacted.contains("user_abcdefghijklmnopqrstuvwxyz"),
             "userId should be redacted, got: {}",
@@ -3799,7 +3572,7 @@ mod tests {
     #[test]
     fn redact_body_redacts_devin_org_and_account_display_name() {
         let body = r#"{"orgId":"org-6b6e9de248db472bb25b296599ea3dc0","accountDisplayName":"user@example.com","devinInfo":{"org_id":"org-abcdef1234567890","account_display_name":"team@example.com"}}"#;
-        let redacted = redact_body(body);
+        let redacted = crate::plugin_engine::redaction::redact_body(body);
         assert!(
             !redacted.contains("org-6b6e9de248db472bb25b296599ea3dc0"),
             "orgId should be redacted, got: {}",
@@ -3835,7 +3608,7 @@ mod tests {
     #[test]
     fn redact_body_redacts_team_id_payment_id_and_paths() {
         let body = r#"{"teamId":"cc1ac023-9ff5-4c1f-a5a4-ae2a82df4243","paymentId":"cus_S5m1PGxjLWoc1c","binaryPath":"/opt/homebrew/bin/bunx","homePath":"/Users/sample/.claude"}"#;
-        let redacted = redact_body(body);
+        let redacted = crate::plugin_engine::redaction::redact_body(body);
         assert!(
             !redacted.contains("cc1ac023-9ff5-4c1f-a5a4-ae2a82df4243"),
             "teamId should be redacted, got: {}",
@@ -3866,7 +3639,7 @@ mod tests {
     #[test]
     fn redact_body_redacts_profile_arn_fields() {
         let body = r#"{"profileArn":"arn:aws:codewhisperer:us-east-1:699475941385:profile/EHGA3GRVQMUK","profile_arn":"arn:aws:codewhisperer:us-east-1:699475941385:profile/EHGA3GRVQMUK"}"#;
-        let redacted = redact_body(body);
+        let redacted = crate::plugin_engine::redaction::redact_body(body);
         assert!(
             !redacted.contains("699475941385"),
             "profile arn should be redacted, got: {}",
@@ -3882,7 +3655,7 @@ mod tests {
     #[test]
     fn redact_log_message_redacts_jwt_and_api_key() {
         let msg = "token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U key=sk-1234567890abcdef";
-        let redacted = redact_log_message(msg);
+        let redacted = crate::plugin_engine::redaction::redact_log_message(msg);
         assert!(
             !redacted.contains("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"),
             "JWT should be redacted"
@@ -3896,7 +3669,7 @@ mod tests {
     #[test]
     fn redact_log_message_redacts_devin_session_token() {
         let msg = "auth=devin-session-token$abcdefghijklmnopqrstuvwxyz123456";
-        let redacted = redact_log_message(msg);
+        let redacted = crate::plugin_engine::redaction::redact_log_message(msg);
         assert!(
             !redacted.contains("devin-session-token$abcdefghijklmnopqrstuvwxyz123456"),
             "Devin session token should be redacted, got: {}",
@@ -3912,7 +3685,7 @@ mod tests {
     #[test]
     fn redact_log_message_redacts_account_and_paths() {
         let msg = "keychain read: service=Claude Code-credentials, account=sample path=/opt/homebrew/bin/bunx home=/Users/sample/.claude";
-        let redacted = redact_log_message(msg);
+        let redacted = crate::plugin_engine::redaction::redact_log_message(msg);
         assert!(
             !redacted.contains("account=sample"),
             "account should be redacted, got: {}",
@@ -3944,7 +3717,7 @@ mod tests {
     fn redact_body_redacts_login_and_analytics_tracking_id() {
         let body =
             r#"{"login":"testuser","analytics_tracking_id":"c9df3f012bb8c2eb7aae6868ee8da6cf"}"#;
-        let redacted = redact_body(body);
+        let redacted = crate::plugin_engine::redaction::redact_body(body);
         assert!(
             !redacted.contains("testuser"),
             "login should be redacted, got: {}",
@@ -3972,7 +3745,7 @@ mod tests {
     fn redact_body_redacts_name_field() {
         let body =
             r#"{"userStatus":{"name":"Sample User","email":"sample@example.com","planStatus":{}}}"#;
-        let redacted = redact_body(body);
+        let redacted = crate::plugin_engine::redaction::redact_body(body);
         assert!(
             !redacted.contains("Sample User"),
             "name should be redacted, got: {}",
