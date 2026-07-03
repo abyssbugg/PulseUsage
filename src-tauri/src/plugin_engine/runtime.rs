@@ -103,7 +103,7 @@ fn run_probe_with_timeout(
     let deadline_at = Instant::now()
         .checked_add(timeout)
         .unwrap_or_else(Instant::now);
-    let deadline = host_api::ProbeDeadline::at(deadline_at);
+    let deadline = crate::plugin_engine::shared::ProbeDeadline::at(deadline_at);
 
     let rt = match Runtime::new() {
         Ok(rt) => rt,
