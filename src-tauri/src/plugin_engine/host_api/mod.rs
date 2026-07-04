@@ -1,7 +1,8 @@
-mod logging;
-mod fs;
-mod plist;
 mod crypto;
+mod env;
+mod fs;
+mod logging;
+mod plist;
 
 use crate::plugin_engine::diagnostics::ProbeDiagnosticsRecorder;
 #[cfg(test)]
@@ -12,103 +13,14 @@ use aes_gcm::{
 };
 #[cfg(test)]
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
-use rquickjs::{function::Opt, Ctx, Exception, Function, Object};
-use std::collections::{HashMap, HashSet};
+use rquickjs::{Ctx, Exception, Function, Object, function::Opt};
+use std::collections::HashSet;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 #[cfg(test)]
 use std::time::Instant;
-
-const WHITELISTED_ENV_VARS: [&str; 16] = [
-    "CODEX_HOME",
-    "CLAUDE_CONFIG_DIR",
-    "CLAUDE_CODE_OAUTH_TOKEN",
-    "USER_TYPE",
-    "USE_STAGING_OAUTH",
-    "USE_LOCAL_OAUTH",
-    "CLAUDE_CODE_CUSTOM_OAUTH_URL",
-    "CLAUDE_CODE_OAUTH_CLIENT_ID",
-    "CLAUDE_LOCAL_OAUTH_API_BASE",
-    "ZAI_API_KEY",
-    "GLM_API_KEY",
-    "MINIMAX_API_KEY",
-    "MINIMAX_API_TOKEN",
-    "MINIMAX_CN_API_KEY",
-    "SYNTHETIC_API_KEY",
-    "PI_CODING_AGENT_DIR",
-];
-
-fn is_credential_env_var(name: &str) -> bool {
-    let upper = name.to_ascii_uppercase();
-    upper.contains("TOKEN")
-        || upper.contains("API_KEY")
-        || upper.ends_with("_KEY")
-        || upper.contains("SECRET")
-        || upper.contains("PASSWORD")
-}
-
-fn last_non_empty_trimmed_line(text: &str) -> Option<String> {
-    text.lines()
-        .map(|line| line.trim())
-        .rev()
-        .find(|line| !line.is_empty())
-        .map(|line| line.to_string())
-}
-
-fn sanitize_env_value(text: &str) -> Option<String> {
-    let mut cleaned = if let Ok(ansi_re) = regex_lite::Regex::new(r"\x1B\[[0-?]*[ -/]*[@-~]") {
-        ansi_re.replace_all(text, "").to_string()
-    } else {
-        text.to_string()
-    };
-    cleaned.retain(|ch| ch == '\n' || ch == '\r' || ch == '\t' || !ch.is_control());
-    last_non_empty_trimmed_line(&cleaned)
-}
-
-fn extract_marked_value(text: &str, start_marker: &str, end_marker: &str) -> Option<String> {
-    let start = text.find(start_marker)?;
-    let after_start = &text[start + start_marker.len()..];
-    let end = after_start.find(end_marker)?;
-    sanitize_env_value(&after_start[..end])
-}
-
-fn parse_interactive_shell_env_output(
-    text: &str,
-    start_marker: &str,
-    end_marker: &str,
-) -> Option<String> {
-    if let Some(marked) = extract_marked_value(text, start_marker, end_marker) {
-        return Some(marked);
-    }
-
-    let has_complete_markers = text.contains(start_marker) && text.contains(end_marker);
-    if has_complete_markers {
-        return None;
-    }
-
-    sanitize_env_value(text)
-}
-
-fn read_env_from_process(name: &str) -> Option<String> {
-    let value = std::env::var(name).ok()?;
-    sanitize_env_value(&value)
-}
-
-fn read_command_stdout(program: &str, args: &[&str]) -> Option<String> {
-    let output = Command::new(program).args(args).output().ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    Some(String::from_utf8_lossy(&output.stdout).into_owned())
-}
-
-fn read_env_value_via_command(program: &str, args: &[&str]) -> Option<String> {
-    let stdout = read_command_stdout(program, args)?;
-    sanitize_env_value(&stdout)
-}
 
 fn current_macos_keychain_account_from_user_env(user_env: Option<String>) -> String {
     user_env
@@ -120,12 +32,12 @@ fn current_macos_keychain_account_from_user_env(user_env: Option<String>) -> Str
                 Some(trimmed.to_string())
             }
         })
-        .or_else(|| read_env_value_via_command("id", &["-un"]))
+        .or_else(|| env::read_env_value_via_command("id", &["-un"]))
         .unwrap_or_else(|| "pulseusage-user".to_string())
 }
 
 fn current_macos_keychain_account() -> String {
-    current_macos_keychain_account_from_user_env(read_env_from_process("USER"))
+    current_macos_keychain_account_from_user_env(env::read_env_from_process("USER"))
 }
 
 fn keychain_find_generic_password_args(service: &str) -> Vec<OsString> {
@@ -180,85 +92,6 @@ fn keychain_add_generic_password_args_for_account(
         OsString::from("-w"),
         OsString::from(value),
     ]
-}
-
-fn terminal_env_cache() -> &'static Mutex<HashMap<String, Option<String>>> {
-    static CACHE: OnceLock<Mutex<HashMap<String, Option<String>>>> = OnceLock::new();
-    CACHE.get_or_init(|| Mutex::new(HashMap::new()))
-}
-
-fn shell_from_env() -> Option<String> {
-    let shell = std::env::var("SHELL").ok()?;
-    let trimmed = shell.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-    let file = std::path::Path::new(trimmed).file_name()?.to_string_lossy();
-    let allowed = file == "zsh" || file == "bash" || file == "fish";
-    if allowed {
-        Some(trimmed.to_string())
-    } else {
-        None
-    }
-}
-
-fn read_env_from_interactive_shell(program: &str, name: &str) -> Option<String> {
-    const START_MARKER: &str = "__OPENUSAGE_ENV_START__";
-    const END_MARKER: &str = "__OPENUSAGE_ENV_END__";
-
-    let script = format!(
-        "printf '{}\\n'; printenv {}; printf '{}\\n'",
-        START_MARKER, name, END_MARKER
-    );
-    let output = read_command_stdout(program, &["-ilc", script.as_str()])?;
-    parse_interactive_shell_env_output(&output, START_MARKER, END_MARKER)
-}
-
-fn read_env_from_interactive_shells(name: &str) -> Option<String> {
-    let mut programs: Vec<String> = Vec::new();
-
-    if let Some(shell) = shell_from_env() {
-        programs.push(shell);
-    }
-
-    for program in [
-        "/bin/zsh",
-        "/bin/bash",
-        "/opt/homebrew/bin/fish",
-        "/usr/local/bin/fish",
-        "/opt/local/bin/fish",
-    ] {
-        if !programs.iter().any(|p| p == program) {
-            programs.push(program.to_string());
-        }
-    }
-
-    for program in programs {
-        if let Some(value) = read_env_from_interactive_shell(program.as_str(), name) {
-            return Some(value);
-        }
-    }
-
-    None
-}
-
-fn resolve_env_value(name: &str) -> Option<String> {
-    // Prefer the current process env (fast + supports launchctl/terminal-launch).
-    if let Some(value) = read_env_from_process(name) {
-        return Some(value);
-    }
-
-    if let Ok(cache) = terminal_env_cache().lock() {
-        if let Some(cached) = cache.get(name) {
-            return cached.clone();
-        }
-    }
-
-    let resolved = read_env_from_interactive_shells(name);
-    if let Ok(mut cache) = terminal_env_cache().lock() {
-        cache.insert(name.to_string(), resolved.clone());
-    }
-    resolved
 }
 
 /// Redact sensitive value to first4...last4 format (UTF-8 safe)
@@ -321,7 +154,7 @@ pub(crate) fn inject_host_api_with_deadline<'js>(
         plist::inject_plist(ctx, &host, diagnostics_recorder.clone())?;
     }
     crypto::inject_crypto(ctx, &host)?;
-    inject_env(ctx, &host, plugin_id, diagnostics_recorder.clone())?;
+    env::inject_env(ctx, &host, plugin_id, diagnostics_recorder.clone())?;
     inject_http(
         ctx,
         &host,
@@ -337,30 +170,6 @@ pub(crate) fn inject_host_api_with_deadline<'js>(
     probe_ctx.set("host", host)?;
     globals.set("__pulseusage_ctx", probe_ctx)?;
 
-    Ok(())
-}
-
-fn inject_env<'js>(
-    ctx: &Ctx<'js>,
-    host: &Object<'js>,
-    _plugin_id: &str,
-    diagnostics_recorder: ProbeDiagnosticsRecorder,
-) -> rquickjs::Result<()> {
-    let env_obj = Object::new(ctx.clone())?;
-    env_obj.set(
-        "get",
-        Function::new(ctx.clone(), move |name: String| -> Option<String> {
-            if !WHITELISTED_ENV_VARS.contains(&name.as_str()) {
-                return None;
-            }
-            let value = resolve_env_value(&name);
-            if is_credential_env_var(&name) {
-                diagnostics_recorder.record_auth_read(value.is_some());
-            }
-            value
-        })?,
-    )?;
-    host.set("env", env_obj)?;
     Ok(())
 }
 
@@ -1765,7 +1574,10 @@ fn run_ccusage_with_runner_deadline(
             let Some(legacy_timeout) =
                 deadline.clamp_duration(Duration::from_secs(CCUSAGE_TIMEOUT_SECS))
             else {
-                crate::plugin_engine::shared::log_probe_deadline_skip(plugin_id, "ccusage legacy fallback");
+                crate::plugin_engine::shared::log_probe_deadline_skip(
+                    plugin_id,
+                    "ccusage legacy fallback",
+                );
                 return CcusageRunnerResult::TimedOut;
             };
             run_ccusage_with_runner_timeout(
@@ -1798,7 +1610,10 @@ fn run_ccusage_with_runner_timeout(
 
     if let Some(home_path) = ccusage_home_override(opts, provider) {
         let config = ccusage_provider_config(provider);
-        command.env(config.home_env_var, crate::plugin_engine::shared::expand_path(&home_path));
+        command.env(
+            config.home_env_var,
+            crate::plugin_engine::shared::expand_path(&home_path),
+        );
     }
 
     let redacted_program = crate::plugin_engine::redaction::redact_log_message(program);
@@ -2085,7 +1900,9 @@ fn inject_keychain<'js>(
                         Some(trimmed.to_string())
                     }
                 });
-                let redacted_account = account.as_ref().map(|value| crate::plugin_engine::redaction::redact_value(value));
+                let redacted_account = account
+                    .as_ref()
+                    .map(|value| crate::plugin_engine::redaction::redact_value(value));
                 if let Some(ref redacted) = redacted_account {
                     log::info!(
                         "[plugin:{}] keychain read: service={}, account={}",
@@ -2436,41 +2253,43 @@ fn inject_sqlite<'js>(
     if SQLITE_WRITE_ALLOWED.contains(&plugin_id) {
         sqlite_obj.set(
             "exec",
-        Function::new(
-            ctx.clone(),
-            move |ctx_inner: Ctx<'_>, db_path: String, sql: String| -> rquickjs::Result<()> {
-                if sql.lines().any(|line| line.trim_start().starts_with('.')) {
-                    return Err(Exception::throw_message(
-                        &ctx_inner,
-                        "sqlite3 dot-commands are not allowed",
-                    ));
-                }
-                let expanded = crate::plugin_engine::shared::expand_path(&db_path);
-                let output = std::process::Command::new("sqlite3")
-                    .args([&expanded, &sql])
-                    .output()
-                    .map_err(|e| {
-                        Exception::throw_message(&ctx_inner, &format!("sqlite3 exec failed: {}", e))
-                    })?;
+            Function::new(
+                ctx.clone(),
+                move |ctx_inner: Ctx<'_>, db_path: String, sql: String| -> rquickjs::Result<()> {
+                    if sql.lines().any(|line| line.trim_start().starts_with('.')) {
+                        return Err(Exception::throw_message(
+                            &ctx_inner,
+                            "sqlite3 dot-commands are not allowed",
+                        ));
+                    }
+                    let expanded = crate::plugin_engine::shared::expand_path(&db_path);
+                    let output = std::process::Command::new("sqlite3")
+                        .args([&expanded, &sql])
+                        .output()
+                        .map_err(|e| {
+                            Exception::throw_message(
+                                &ctx_inner,
+                                &format!("sqlite3 exec failed: {}", e),
+                            )
+                        })?;
 
-                if !output.status.success() {
-                    let stderr = String::from_utf8_lossy(&output.stderr);
-                    return Err(Exception::throw_message(
-                        &ctx_inner,
-                        &format!("sqlite3 error: {}", stderr.trim()),
-                    ));
-                }
+                    if !output.status.success() {
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        return Err(Exception::throw_message(
+                            &ctx_inner,
+                            &format!("sqlite3 error: {}", stderr.trim()),
+                        ));
+                    }
 
-                Ok(())
-            },
-        )?,
-    )?;
+                    Ok(())
+                },
+            )?,
+        )?;
     }
 
     host.set("sqlite", sqlite_obj)?;
     Ok(())
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -2507,23 +2326,23 @@ mod tests {
     #[test]
     fn last_non_empty_trimmed_line_uses_final_value_when_stdout_is_noisy() {
         let stdout = "banner line\nanother message\n  sk-test-key-12345  \n";
-        let value = last_non_empty_trimmed_line(stdout);
+        let value = env::last_non_empty_trimmed_line(stdout);
         assert_eq!(value.as_deref(), Some("sk-test-key-12345"));
     }
 
     #[test]
     fn credential_env_var_detection_ignores_non_secret_config() {
-        assert!(!is_credential_env_var("CODEX_HOME"));
-        assert!(!is_credential_env_var("USE_LOCAL_OAUTH"));
-        assert!(!is_credential_env_var("CLAUDE_CODE_OAUTH_CLIENT_ID"));
-        assert!(is_credential_env_var("CLAUDE_CODE_OAUTH_TOKEN"));
-        assert!(is_credential_env_var("ZAI_API_KEY"));
+        assert!(!env::is_credential_env_var("CODEX_HOME"));
+        assert!(!env::is_credential_env_var("USE_LOCAL_OAUTH"));
+        assert!(!env::is_credential_env_var("CLAUDE_CODE_OAUTH_CLIENT_ID"));
+        assert!(env::is_credential_env_var("CLAUDE_CODE_OAUTH_TOKEN"));
+        assert!(env::is_credential_env_var("ZAI_API_KEY"));
     }
 
     #[test]
     fn last_non_empty_trimmed_line_returns_none_for_empty_stdout() {
         let stdout = "  \n\n\t\n";
-        let value = last_non_empty_trimmed_line(stdout);
+        let value = env::last_non_empty_trimmed_line(stdout);
         assert!(value.is_none());
     }
 
@@ -2546,7 +2365,8 @@ mod tests {
         let key_b64 = BASE64_STANDARD.encode(key);
         let plaintext = r#"{"access_token":"token-2","refresh_token":"refresh-2"}"#;
 
-        let envelope = crypto::encrypt_aes_256_gcm_envelope(plaintext, &key_b64).expect("encrypt envelope");
+        let envelope =
+            crypto::encrypt_aes_256_gcm_envelope(plaintext, &key_b64).expect("encrypt envelope");
         let decrypted =
             crypto::decrypt_aes_256_gcm_envelope(&envelope, &key_b64).expect("decrypt envelope");
 
@@ -2561,8 +2381,8 @@ mod tests {
         let tag_b64 = BASE64_STANDARD.encode([2_u8; 16]);
         let ciphertext_b64 = BASE64_STANDARD.encode([3_u8; 8]);
 
-        let key_err =
-            crypto::decrypt_aes_256_gcm_envelope("AQ==:AQ==:AQ==", &short_key_b64).expect_err("key length");
+        let key_err = crypto::decrypt_aes_256_gcm_envelope("AQ==:AQ==:AQ==", &short_key_b64)
+            .expect_err("key length");
         assert!(key_err.contains("expected 32 bytes"));
 
         let iv_err = crypto::decrypt_aes_256_gcm_envelope(
@@ -2589,7 +2409,7 @@ mod tests {
     #[test]
     fn sanitize_env_value_strips_ansi_and_control_sequences() {
         let raw = "\u{1b}[?1000l\n  sk-test-key-12345\u{1b}[?2004h\r\n";
-        let value = sanitize_env_value(raw);
+        let value = env::sanitize_env_value(raw);
         assert_eq!(value.as_deref(), Some("sk-test-key-12345"));
     }
 
@@ -2604,7 +2424,7 @@ mod tests {
             "\u{1b}[32muser@host\u{1b}[0m\n"
         );
         let value =
-            extract_marked_value(stdout, "__OPENUSAGE_ENV_START__", "__OPENUSAGE_ENV_END__");
+            env::extract_marked_value(stdout, "__OPENUSAGE_ENV_START__", "__OPENUSAGE_ENV_END__");
         assert_eq!(value.as_deref(), Some("sk-test-key-12345"));
     }
 
@@ -2617,7 +2437,7 @@ mod tests {
             "__OPENUSAGE_ENV_END__\n"
         );
         let value =
-            extract_marked_value(stdout, "__OPENUSAGE_ENV_START__", "__OPENUSAGE_ENV_END__");
+            env::extract_marked_value(stdout, "__OPENUSAGE_ENV_START__", "__OPENUSAGE_ENV_END__");
         assert_eq!(value.as_deref(), Some("sk-test-key-12345"));
     }
 
@@ -2625,14 +2445,14 @@ mod tests {
     fn extract_marked_value_returns_none_when_marked_value_is_empty() {
         let stdout = "__OPENUSAGE_ENV_START__\n  \n__OPENUSAGE_ENV_END__\n";
         let value =
-            extract_marked_value(stdout, "__OPENUSAGE_ENV_START__", "__OPENUSAGE_ENV_END__");
+            env::extract_marked_value(stdout, "__OPENUSAGE_ENV_START__", "__OPENUSAGE_ENV_END__");
         assert!(value.is_none());
     }
 
     #[test]
     fn parse_interactive_shell_env_output_does_not_fallback_to_end_marker_for_empty_value() {
         let stdout = "__OPENUSAGE_ENV_START__\n  \n__OPENUSAGE_ENV_END__\n";
-        let value = parse_interactive_shell_env_output(
+        let value = env::parse_interactive_shell_env_output(
             stdout,
             "__OPENUSAGE_ENV_START__",
             "__OPENUSAGE_ENV_END__",
@@ -2643,7 +2463,7 @@ mod tests {
     #[test]
     fn parse_interactive_shell_env_output_falls_back_without_markers() {
         let stdout = "\u{1b}[?1000l\n  sk-test-key-12345\u{1b}[?2004h\r\n";
-        let value = parse_interactive_shell_env_output(
+        let value = env::parse_interactive_shell_env_output(
             stdout,
             "__OPENUSAGE_ENV_START__",
             "__OPENUSAGE_ENV_END__",
@@ -2858,7 +2678,7 @@ mod tests {
 
         for name in claude_env_vars {
             assert!(
-                WHITELISTED_ENV_VARS.contains(&name),
+                env::WHITELISTED_ENV_VARS.contains(&name),
                 "{name} must be whitelisted for Claude auth compatibility"
             );
         }
@@ -2874,8 +2694,8 @@ mod tests {
             let env: Object = host.get("env").expect("env");
             let get: Function = env.get("get").expect("get");
 
-            for name in WHITELISTED_ENV_VARS {
-                let expected = resolve_env_value(name);
+            for name in env::WHITELISTED_ENV_VARS {
+                let expected = env::resolve_env_value(name);
                 let value: Option<String> =
                     get.call((name.to_string(),)).expect("get whitelisted var");
                 assert_eq!(value, expected, "{name} should match host env resolver");
@@ -2973,7 +2793,10 @@ mod tests {
         let home = dirs::home_dir().expect("home dir");
         let expected = home.join(".claude-custom").to_string_lossy().to_string();
 
-        assert_eq!(crate::plugin_engine::shared::expand_path("~/.claude-custom"), expected);
+        assert_eq!(
+            crate::plugin_engine::shared::expand_path("~/.claude-custom"),
+            expected
+        );
     }
 
     #[test]
@@ -3076,8 +2899,14 @@ mod tests {
 
     #[test]
     fn redact_value_shows_first_and_last_four() {
-        assert_eq!(crate::plugin_engine::redaction::redact_value("sk-1234567890abcdef"), "sk-1...cdef");
-        assert_eq!(crate::plugin_engine::redaction::redact_value("short"), "[REDACTED]");
+        assert_eq!(
+            crate::plugin_engine::redaction::redact_value("sk-1234567890abcdef"),
+            "sk-1...cdef"
+        );
+        assert_eq!(
+            crate::plugin_engine::redaction::redact_value("short"),
+            "[REDACTED]"
+        );
     }
 
     #[test]
@@ -4129,7 +3958,9 @@ esac
 
     #[test]
     fn probe_deadline_clamps_host_timeout_to_remaining_budget() {
-        let deadline = crate::plugin_engine::shared::ProbeDeadline::at(Instant::now() + Duration::from_millis(25));
+        let deadline = crate::plugin_engine::shared::ProbeDeadline::at(
+            Instant::now() + Duration::from_millis(25),
+        );
         let clamped = deadline
             .clamp_duration(Duration::from_secs(10))
             .expect("remaining budget should produce a host timeout");
@@ -4158,8 +3989,8 @@ esac
         use std::os::unix::fs::PermissionsExt;
         use std::path::Path;
         use std::time::Duration;
-#[cfg(test)]
-use std::time::Instant;
+        #[cfg(test)]
+        use std::time::Instant;
 
         fn pid_exists(pid: i32) -> bool {
             unsafe { libc::kill(pid, 0) == 0 }
