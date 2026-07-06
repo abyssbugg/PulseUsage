@@ -1,5 +1,59 @@
 # Changelog
 
+## v0.7.0
+
+### Architecture Modernization
+- Decompose the 4,816-LOC `host_api.rs` monolith into 13 cohesive, single-responsibility modules (`logging`, `fs`, `plist`, `crypto`, `env`, `sqlite`, `ls`, `http`, `keychain`, `ccusage`, `utils`, `redaction`, `shared`). Each module owns its inject function, helpers, and tests. Zero behavior changes — pure structural refactoring. (PRs #30–#45)
+- Extract `ProbeDeadline` and `redaction` into shared utilities for cross-module reuse.
+- Move host API test coverage alongside extracted modules (`#[cfg(test)]` submodules).
+
+### Capability Enforcement
+- Introduce `HostCapability` model and `HostCapabilitySet` for least-privilege host API access. Each plugin declares which host APIs it needs via `hostCapabilities` in its manifest (schema v2). The orchestrator only injects requested APIs — undeclared capabilities result in the JS function not existing on `ctx.host` (fail-safe TypeError at call site). (PRs #47–#48)
+- Gate `patch_http_wrapper`, `patch_ls_wrapper`, and `patch_ccusage_wrapper` by the corresponding capability so they only patch objects that were actually injected.
+
+### Plugin Platform
+- Migrate all 18 bundled providers to explicit `hostCapabilities` declarations (schema v2). Each provider's capabilities were audited individually via `ctx.host.*` usage grep — no copying between similar providers. (PRs #49–#50)
+- Audit found and fixed a systematic latent bug: 12 providers used `ctx.util.request` (which wraps `ctx.host.http.request`) but the v1 compat map omitted `HttpRequest`. The explicit declarations add `httpRequest` where required.
+- Provider metadata validator now accepts schema v1 and v2; validates `hostCapabilities` entries against the canonical capability list (warns on unknown strings so plugin authors catch typos).
+
+### Compatibility Layer
+- Retain the v1 capability inference map as part of the platform compatibility contract for third-party plugins that predate schema v2. A structured runtime warning (`Plugin "<id>" is using legacy capability inference...`) surfaces unmigrated plugins without failing them. (PR #51)
+- Document deprecation policy in `docs/deprecation/capability-v1-compat.md`: removal requires ≥90% schema v2 adoption measured via telemetry, earliest v0.9.0. The v1 map is not deprecated.
+
+### Diagnostics Improvements
+- Add `CapabilitySource` enum (Explicit | Inferred) and three new `ProviderDiagnostics` fields: `schemaVersion`, `capabilitySource`, `capabilityCount`. The frontend Diagnostics panel shows "Schema: vN" and "Capabilities: Explicit (N)" / "Inferred (Legacy) (N)". (PR #51)
+- Add 14 regression tests covering v1/v2/mixed/third-party/missing/malformed capability scenarios.
+
+### Security Improvements
+- `inject_plist` gated by `PlistRead` capability (was previously gated by a hardcoded plugin ID allowlist — now capability-driven).
+- `inject_sqlite.exec` (write) gated by `SqliteExec` capability (was previously always injected alongside `query` — now least-privilege).
+- `dangerouslyIgnoreTls` localhost-only enforcement verified at runtime (throws on non-localhost URLs).
+
+### macOS 27 Compatibility
+- `keychain_add_generic_password_args` now includes `-a account` (macOS 27 `security add-generic-password` requirement). Resolves the pre-existing write failure unmasked by the v0.6.28 keychain read fix.
+- Keychain `readGenericPassword` accepts optional `account` argument via `Opt<String>` (rquickjs 0.12 idiomatic optional param). (v0.6.28)
+
+### Documentation Improvements
+- New: `docs/plugins/capabilities.md` (schema v1/v2 reference, migration path, capability strings)
+- New: `docs/deprecation/capability-v1-compat.md` (removal criteria, earliest v0.9.0)
+- Updated: `docs/plugins/schema.md` (schemaVersion 1/2 + hostCapabilities field)
+- Updated: `docs/plugins/api.md` (Program 1 module paths)
+- Updated: 17 docs synchronized with Program 1 completion (PR #46)
+- New: 8 governance documents (`docs/governance/`, 1,305 lines)
+
+### Chores
+- Bump version to 0.7.0
+- Safe dependency bumps (PR #30): time 0.3.53, uuid 1.23.4, log 0.4.33, @types/node 26.0.1
+- Major dependency bumps (PR #31): tauri 2.11.5, tauri-build 2.6.3, aes-gcm 0.11.0
+- Security hardening + macOS 27 compatibility baseline (PR #29)
+
+### Known Limitations
+- Perplexity `Agentic Research` metric remains intentionally unclassified (no evidence); strict-mode validator fails by design until evidence is gathered.
+- `cargo fmt --check` has pre-existing formatting drift in `config.rs` and `server.rs` (files untouched by the modernization). Non-blocking; fix in a follow-up PR.
+- 27 clippy warnings (all pre-existing, non-blocking): 12 collapsible-if, 2 PathBuf→Path, 2 unneeded unit return, 1 unused import, others.
+- PR #35 (aes-gcm 0.10→0.11 upgrade) has failing CI due to breaking API changes (OsRng, generic_array moved). Deferred to a follow-up PR; current 0.10.3 works correctly.
+- Issue #26 (Antigravity LS probe hardening) open as a non-blocking enhancement follow-up.
+
 ## v0.6.28
 
 ### New Features
