@@ -1,11 +1,12 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "factory",
   "name": "Factory",
   "version": "0.0.1",
   "entry": "plugin.js",
   "icon": "icon.svg",
   "brandColor": "#020202",
+  "hostCapabilities": ["cryptoAes", "fsRead", "fsWrite", "httpRequest", "keychainRead", "keychainWrite"],
   "lines": [
     { "type": "text", "label": "Extra Usage", "scope": "overview", "classification": "planDependent" },
     { "type": "progress", "label": "5-hour usage", "scope": "overview", "classification": "planDependent", "primaryOrder": 1 },

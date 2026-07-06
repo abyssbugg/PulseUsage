@@ -1,11 +1,12 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "amp",
   "name": "Amp",
   "version": "0.0.1",
   "entry": "plugin.js",
   "icon": "icon.svg",
   "brandColor": "#F34E3F",
+  "hostCapabilities": ["fsRead", "httpRequest"],
   "lines": [
     { "type": "progress", "label": "Free", "scope": "overview", "classification": "planDependent", "primaryOrder": 1 },
     { "type": "text", "label": "Bonus", "scope": "detail", "classification": "planDependent" },

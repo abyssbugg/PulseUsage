@@ -1,11 +1,12 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "codex",
   "name": "Codex",
   "version": "0.0.1",
   "entry": "plugin.js",
   "icon": "icon.svg",
   "brandColor": "#74AA9C",
+  "hostCapabilities": ["ccusageQuery", "envRead", "fsRead", "fsWrite", "httpRequest", "keychainRead", "keychainWrite"],
   "links": [
     { "label": "Status", "url": "https://status.openai.com/" },
     { "label": "Usage dashboard", "url": "https://chatgpt.com/codex/settings/usage" }
