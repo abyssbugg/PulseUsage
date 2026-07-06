@@ -4,6 +4,7 @@ pub mod diagnostics;
 pub mod host_api;
 pub mod manifest;
 pub mod runtime;
+pub mod capability;
 
 use manifest::LoadedPlugin;
 use std::path::{Path, PathBuf};
