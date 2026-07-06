@@ -196,9 +196,9 @@ Plugins run in a QuickJS sandbox (`rquickjs`). Host APIs (`host.*`) are the only
 
 Host APIs that shell out (`plutil`, `security`, `sqlite3`) are isolated in named `inject_*` functions. v1.0+ will replace these with Rust-native crates (`plist`, `rusqlite`, `security-framework`) — but only if energy/reliability concerns materialize (AGENTS.md: simplicity first).
 
-### 5. Monolith awareness
+### 5. Modular architecture
 
-`host_api.rs` is 4,727 LOC (v0.6.28). This is acknowledged technical debt. v0.7 will modularize it into `host_api/{log,fs,plist,crypto,env,http,ls,ccusage,keychain,sqlite}.rs` + `redaction.rs`. No behavior change — pure extraction.
+`host_api/` is a modular directory (Program 1 complete, v0.7.0). The original 4,816-LOC `host_api.rs` monolith was decomposed into 13 cohesive modules: `redaction.rs`, `shared.rs`, `logging.rs`, `fs.rs`, `plist.rs`, `crypto.rs`, `env.rs`, `sqlite.rs`, `ls.rs`, `http.rs`, `keychain.rs`, `ccusage.rs`, `utils.rs`. `mod.rs` (1,736 LOC) contains only orchestration + integration tests. 97.7% of production code extracted. Zero behavior changes, zero public API changes.
 
 ## Architecture Decision Log
 
@@ -210,13 +210,14 @@ Host APIs that shell out (`plutil`, `security`, `sqlite3`) are isolated in named
 | Merge commits (not squash) | Project inception | Preserves atomic-commit and review trail |
 | Manual release process | v0.6.27 | `publish.yml` disabled; `gh release create` manual |
 | `Opt<String>` for optional JS params | v0.6.28 | rquickjs `Option<T>` is not optional at JS layer; `Opt<T>` is |
+| host_api modularization (Program 1) | v0.7.0 (2026-07-06) | 4,816-LOC monolith → 13 modules. 97.7% extracted. Zero behavior changes |
 
 ## Future Architecture Considerations
 
 ### Under evaluation (do not implement until triggered)
 
-- **Plugin capability manifest** (v0.7) — `"capabilities": [...]` in `plugin.json`, enforced in `inject_host_api_with_deadline`
-- **`host_api.rs` modularization** (v0.7) — split 4,727-LOC monolith
+- **Plugin capability manifest** (Program 2, approved) — `"capabilities": [...]` in `plugin.json` (schema v2), enforced in `inject_host_api_with_deadline` in `host_api/mod.rs`. Design approved in Program Transition document.
+- ~~**host_api.rs modularization**~~ ✅ Complete (Program 1, PRs #32–#45)
 - **Process-exec native crates** (v1.0, conditional) — replace subprocess spawning
 - **Notarization** (v1.0, conditional) — if macOS 27 enforces
 - **App Sandbox** (v1.0, conditional) — if macOS 27 enforces

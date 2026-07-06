@@ -1,18 +1,18 @@
 # Project Status
 
 > **Canonical project state document.** Future agents must read this first.
-> Last updated: 2026-07-03 (commit `e749c72`)
+> Last updated: 2026-07-06 (Program 1 complete)
 
 ## Current State
 
 | Field | Value |
 |---|---|
-| **Phase** | Stabilization (pre-v0.7.0) |
-| **Main HEAD** | `e749c72` (docs: establish repository governance framework) |
+| **Phase** | Stabilization Milestone (pre-v0.7.0 release) |
+| **Main HEAD** | `60b85bf` (Merge PR #45 — extract inject_utils) |
 | **Origin/main** | In sync (0 ahead, 0 behind) |
 | **Latest release** | v0.6.28 (2026-07-02) — published, DMG uploaded |
-| **Commits since v0.6.28** | 12 (post-release: PRs #24, #25, #27, #28 + governance docs) |
-| **Version (all 4 files)** | `0.6.28` — aligned |
+| **Commits since v0.6.28** | 30+ (PR #29 maintenance baseline + Program 1: PRs #30–#45) |
+| **Version (all 4 files)** | `0.6.28` — aligned (v0.7.0 not yet bumped) |
 | **Branches** | 2 local (`main`, `research/uiux-redesign` identical to main) |
 | **Worktrees** | 1 (main only) |
 | **Stashes** | 0 |
@@ -28,54 +28,49 @@
 | Worktree health | 10/10 | 🟢 Excellent |
 | Git history health | 9.5/10 | 🟢 Excellent |
 | Release health | 9/10 | 🟢 Excellent |
-| Documentation health | 9/10 | 🟢 Excellent (governance docs committed) |
+| Documentation health | 7/10 | 🟡 Good (drift being fixed this PR) |
 | Governance maturity | 9/10 | 🟢 Excellent (8 governance docs + 6 control-center docs) |
 | CI/CD health | 9/10 | 🟢 Excellent |
-| Dependency health | 7/10 | 🟡 Good (5 green PRs, 1 age-gated, npm refresh needed) |
-| Issue hygiene | 7/10 | 🟡 Good (1 open issue unlabeled) |
-| **Overall** | **8.9/10** | 🟢 **Excellent** |
+| Dependency health | 9/10 | 🟢 Excellent (all deps current after PR #30/#31) |
+| Issue hygiene | 8/10 | 🟢 Good |
+| Architecture health | 9.5/10 | 🟢 Excellent (Program 1 complete — 13 modules) |
+| **Overall** | **9.1/10** | 🟢 **Excellent** |
+
+## Program 1 Completion Summary
+
+| Metric | Value |
+|---|---|
+| **Original `host_api.rs`** | 4,816 LOC (single file) |
+| **Final `host_api/mod.rs`** | 1,736 LOC (112 production + 1,624 tests) |
+| **Modules extracted** | 13 (redaction, shared, logging, fs, plist, crypto, env, sqlite, ls, http, keychain, ccusage, utils) |
+| **LOC extracted** | ~3,248 LOC |
+| **Modularization percentage** | 97.7% of production code |
+| **PRs merged** | 16 (#30–#45) |
+| **CI result** | 100% green on all 16 PRs |
+| **Behavior changes** | 0 |
+| **Public API changes** | 0 |
+| **Test count** | 139 Rust + 1,109 JS = 1,248 total |
 
 ## Open Work Items
 
 | Item | Type | Status | Priority |
 |---|---|---|---|
-| Issue #26 | Antigravity LS probe hardening | Open, unlabeled, unassigned | P2 — triage needed |
-| PR #18 | `@types/node` 25.9.4→26.0.0 | CI failing (Bun age gate) | P2 — rebase needed |
-| PR #19 | tauri 2.11.2→2.11.3 | ✅ CI green, MERGEABLE/CLEAN | P1 — merge first |
-| PR #20 | tauri-build 2.6.2→2.6.3 | ✅ CI green, MERGEABLE/CLEAN | P1 — merge second |
-| PR #21 | log 0.4.32→0.4.33 | ✅ CI green, MERGEABLE/CLEAN | P1 — merge third |
-| PR #22 | time 0.3.47→0.3.51 | ✅ CI green, MERGEABLE/CLEAN | P1 — merge fourth |
-| PR #23 | uuid 1.23.2→1.23.4 | ✅ CI green, MERGEABLE/CLEAN | P1 — merge fifth |
+| Documentation synchronization | Task | 🔄 In progress (this PR) | P1 |
+| Repository health audit | Task | ⬜ Pending | P2 |
+| Release readiness audit | Task | ⬜ Pending | P2 |
+| Program 2 readiness review | Task | ⬜ Pending | P2 |
+| Program 2 (Capability Enforcement) | Feature | ⬜ Design approved, not started | P3 |
+| v0.7.0 release | Release | ⬜ Pending Program 2 completion | P3 |
+| Issue #26 (Antigravity LS probe hardening) | Issue | ⬜ Open | P3 |
 
-## Confirmed Issues (Not Yet Fixed)
+## Recent Milestones (v0.6.28 → present)
 
-| Issue | Severity | Status | Fix Target |
+| Milestone | PR(s) | Date | Status |
 |---|---|---|---|
-| macOS 27: `security add-generic-password` requires `-a account` | Medium | Confirmed (keychain write broken, read works) | v0.7.0 hardening PR |
-| `dangerouslyIgnoreTls` no-localhost guard | Low | Confirmed (defense-in-depth) | v0.7.0 hardening PR |
-| `inject_plist` no plugin_id allowlist | Low | Confirmed | v0.7.0 hardening PR |
-| `inject_sqlite.exec` no plugin_id allowlist | Low | Confirmed | v0.7.0 hardening PR |
-| 2 SVG icons missing `currentColor` | Low | Confirmed (AGENTS.md compliance) | v0.7.0 hardening PR |
-| `deleteGenericPassword` not implemented in host | Low | Confirmed (copilot catches error) | v0.7.0 |
-| `host_api.rs` 4,727-LOC monolith | Low | Acknowledged technical debt | v0.7.0 modularization |
-| Perplexity `Agentic Research` unclassified | Low | Intentional (no evidence) | v0.7.0 (after evidence) |
-
-## Frozen Work (Explicitly Forbidden This Phase)
-
-- PulseBar rename (EDR-001 Approved but not executing — see [IMP-005](./docs/imp/005-pulsebar-migration-plan.md))
-- UI/UX redesign (2 untracked planning docs exist — `docs/ux-audit-phase-0.md`, `docs/uiux-redesign-phase-0-spec.md` — left untracked, forbidden scope)
-- Ollama integration (PR-2 — not started)
-- OpenUsage / CodexBar imports (explicitly forbidden)
-- New release creation (v0.7.0 not yet ready)
-
-## Authoritative References
-
-- [CURRENT_PHASE.md](./CURRENT_PHASE.md) — current milestone and immediate next steps
-- [ROADMAP.md](./ROADMAP.md) — project roadmap and phase plan
-- [RELEASE_PLAN.md](./RELEASE_PLAN.md) — release strategy and timeline
-- [ACTIVE_BRANCHES.md](./ACTIVE_BRANCHES.md) — branch inventory
-- [TECHNICAL_DEBT.md](./TECHNICAL_DEBT.md) — debt register
-- [docs/governance/](./docs/governance/) — engineering standards (8 documents)
-- [docs/edr/](./docs/edr/) — engineering decision records
-- [docs/imp/](./docs/imp/) — implementation master plans
-- [docs/release-readiness/](./docs/release-readiness/) — per-release readiness reports
+| v0.6.28 release | #14 | 2026-07-02 | ✅ Published |
+| Repository stabilization (governance + control center) | — | 2026-07-03 | ✅ Complete |
+| Maintenance baseline (security + macOS 27 + deps) | #29 | 2026-07-05 | ✅ Merged |
+| Safe dependency bumps | #30 | 2026-07-05 | ✅ Merged |
+| Major dependency bumps | #31 | 2026-07-05 | ✅ Merged |
+| host_api modularization (Program 1) | #32–#45 | 2026-07-06 | ✅ Complete |
+| Documentation synchronization | — | 2026-07-06 | 🔄 In progress |

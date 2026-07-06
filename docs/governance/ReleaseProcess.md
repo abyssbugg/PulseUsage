@@ -210,7 +210,7 @@ Retry with `bun tauri build --bundles dmg`. The `bundle_dmg.sh` script occasiona
 - Merge 6 pending dependabot PRs
 - npm deps refresh (batch PR)
 - Provider capability model (schema v2)
-- host_api.rs modularization
+- host_api modularization (Program 1 complete — 13 modules under `host_api/`)
 
 ### v1.0.0 (conditional — only if triggered)
 - Notarization (if macOS 27 enforces or user base grows >10)

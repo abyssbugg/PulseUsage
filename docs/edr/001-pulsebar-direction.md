@@ -132,7 +132,7 @@ Bundle ID change = manual upgrade from 0.6.x. Settings migrate on first launch. 
 
 - 18 plugins probe successfully
 - Settings SSOT, no duplicated defaults
-- `host_api.rs` split (<400 LOC per module)
+- `host_api/` modularization complete (Program 1 — 13 modules, each <400 LOC)
 - Signed + notarized universal binary
 - Tauri auto-update across 3 releases
 - API key settings UI, Reset All Customization

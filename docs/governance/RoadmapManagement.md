@@ -29,7 +29,7 @@ From the approved engineering hardening roadmap:
    - `tauri-nspanel` fork + pin by rev
    - `cargo clippy --fix`
    - `cargo-audit` CI step
-3. **`host_api.rs` modularization** — split 4,727-LOC monolith into per-capability modules
+3. **host_api modularization** ✅ Complete (Program 1, PRs #32–#45) — split 4,816-LOC monolith into 13 modules under `host_api/`
 4. **Plugin capability manifest** — `"capabilities": [...]` in `plugin.json` (schema v2)
 5. **Perplexity `Agentic Research` classification** — gather evidence, enable strict-mode CI
 6. **npm deps refresh** — batch `@base-ui/react`, `lucide-react`, tailwind updates

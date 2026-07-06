@@ -1,52 +1,54 @@
 # Roadmap
 
 > **Canonical project roadmap.** Future agents must verify work aligns with this document.
-> Last updated: 2026-07-03
+> Last updated: 2026-07-06
 
 ## Current Milestone
 
-**v0.7.0 — Stabilization & Architecture Hardening** (in planning, not started)
+**Stabilization Milestone** (pre-v0.7.0 release) — Program 1 complete, Program 2 design approved, documentation synchronization in progress.
 
 ## Phase Plan
 
-### Phase A — Immediate Stabilization (current, ~2 hours)
+### Phase A — Immediate Stabilization ✅ COMPLETE
 
 | Task | Status | Effort |
 |---|---|---|
 | Commit governance documentation | ✅ Complete (commit `e749c72`) | 10 min |
-| Establish Project Control Center | ✅ Complete (this document set) | 30 min |
+| Establish Project Control Center | ✅ Complete (6 control-center docs) | 30 min |
 | Create IMP-005 (PulseBar migration plan) | ✅ Complete | 1 hour |
-| Triage issue #26 (add labels, assign) | ⬜ Pending | 5 min |
-| Rebase PR #18 (`@types/node` age gate) | ⬜ Pending | 5 min |
-| Merge 5 green dependabot PRs (#19→#20→#21→#22→#23) | ⬜ Pending | 50 min |
+| Triage issue #26 (add labels, assign) | ✅ Complete | 5 min |
+| Rebase PR #18 (`@types/node` age gate) | ✅ Superseded by PR #29 (manual bump to 26.0.1) | — |
 
-### Phase B — Security Hardening + macOS 27 Compatibility (~3 hours)
+### Phase B — Security Hardening + macOS 27 Compatibility ✅ COMPLETE
 
-Bundle into one hardening PR:
-- `dangerouslyIgnoreTls` localhost-only guard
-- `inject_plist` plugin_id allowlist
-- `inject_sqlite.exec` plugin_id allowlist
-- 2 SVG `currentColor` fixes (antigravity, copilot)
-- `tauri-nspanel` fork + pin by rev (reproducibility)
-- `cargo clippy --fix` (21 warnings, 15 auto-fixable)
-- `cargo-audit` CI step
-- **macOS 27: `keychain_add_generic_password_args` add `-a account`**
+All 8 hardening items resolved by PR #29 (merged 2026-07-05):
+- ✅ `dangerouslyIgnoreTls` localhost-only guard — `host_api/http.rs`
+- ✅ `inject_plist` plugin_id allowlist — `host_api/mod.rs` orchestrator (`PLIST_ALLOWED`)
+- ✅ `inject_sqlite.exec` plugin_id allowlist — `host_api/sqlite.rs` (`SQLITE_WRITE_ALLOWED`)
+- ✅ 2 SVG `currentColor` fixes (antigravity, copilot)
+- ✅ `tauri-nspanel` fork + pin by rev
+- ✅ `cargo clippy --fix` (21 warnings resolved)
+- ✅ macOS 27: `keychain_add_generic_password_args` add `-a account` — `host_api/keychain.rs`
+- ⬜ `cargo-audit` CI step (deferred — not blocking)
 
-### Phase C — v0.7.0 Architecture Evolution (~1-2 weeks)
+### Phase C — v0.7.0 Architecture Evolution ✅ MOSTLY COMPLETE
 
-- npm deps refresh (batch `@base-ui/react` 1.1→1.6, `lucide-react` 1.7→1.21, tailwind, react, zustand)
-- `host_api.rs` modularization (split 4,727-LOC monolith into per-capability modules)
-- Plugin capability manifest enforcement (schema v2 with `"capabilities": [...]`)
-- `deleteGenericPassword` host implementation
-- Perplexity `Agentic Research` classification (evidence-gathering, then strict-mode CI)
+| Task | Status | Notes |
+|---|---|---|
+| npm deps refresh (batch) | ✅ Complete | PR #30 (safe bumps) + PR #31 (major bumps) |
+| host_api modularization | ✅ Complete | Program 1 — PRs #32–#45. 4,816-LOC monolith → 13 modules |
+| Plugin capability manifest enforcement | ⬜ Design approved | Program 2 — 6 PRs, ~9 hours. Not started |
+| `deleteGenericPassword` host implementation | ⬜ Pending | Will be part of Program 2 |
+| Perplexity `Agentic Research` classification | ⬜ Deferred | Needs research — no evidence of response shape |
 
-### Phase D — v0.7.0 Release
+### Phase D — v0.7.0 Release ⬜ PENDING
 
 - Version bump to `0.7.0` (4 files + CHANGELOG + release-readiness doc)
 - Tag `v0.7.0` + build DMG + publish release
 - See [RELEASE_PLAN.md](./RELEASE_PLAN.md)
+- **Prerequisite:** Program 2 (capability enforcement) must be complete
 
-### Phase E — PulseBar Migration (post-v0.7.0, when approved)
+### Phase E — PulseBar Migration ⬜ FORBIDDEN
 
 - Execute [IMP-005](./docs/imp/005-pulsebar-migration-plan.md) (PulseUsage → PulseBar)
 - Release as v0.8.0 (or v1.0.0 if combined with notarization)
@@ -58,6 +60,37 @@ Bundle into one hardening PR:
 - Notarization — if macOS 27 enforces or user base >10
 - App Sandbox — if macOS 27 enforces
 - **Do NOT implement until triggered** (AGENTS.md: simplicity first)
+
+## Program 1 Completion Details
+
+| Metric | Value |
+|---|---|
+| PRs merged | #30–#45 (16 PRs) |
+| Original `host_api.rs` | 4,816 LOC |
+| Final `host_api/mod.rs` | 1,736 LOC (112 production + 1,624 tests) |
+| Modules extracted | 13 |
+| Modularization percentage | 97.7% |
+| Behavior changes | 0 |
+| Public API changes | 0 |
+
+### Final module layout
+```
+src-tauri/src/plugin_engine/host_api/
+├── mod.rs         1,736 LOC (orchestration + tests)
+├── redaction.rs      ~200 LOC  (redaction regexes)
+├── shared.rs         ~100 LOC  (expand_path, ProbeDeadline, etc.)
+├── logging.rs         48 LOC  (ctx.host.log)
+├── fs.rs              90 LOC  (ctx.host.fs)
+├── plist.rs           50 LOC  (ctx.host.plist)
+├── crypto.rs         155 LOC  (ctx.host.crypto + AES-GCM)
+├── env.rs            200 LOC  (ctx.host.env + env resolution)
+├── sqlite.rs         125 LOC  (ctx.host.sqlite — exec gated to cursor)
+├── ls.rs             411 LOC  (ctx.host.ls + ls_* helpers + tests)
+├── http.rs           222 LOC  (ctx.host.http + TLS guard)
+├── keychain.rs       501 LOC  (ctx.host.keychain + macOS 27 fix)
+├── ccusage.rs        857 LOC  (ctx.host.ccusage + all runner logic)
+└── utils.rs          289 LOC  (ctx.line/format/base64/jwt)
+```
 
 ## Approved Decision Records
 
@@ -79,10 +112,12 @@ Bundle into one hardening PR:
 
 | Milestone | Date | Release |
 |---|---|---|
+| Program 1 — host_api modularization (PRs #30–#45) | 2026-07-06 | On main (not released) |
+| Maintenance baseline (PR #29) | 2026-07-05 | On main (not released) |
+| PR-1 — Provider capability contracts | 2026-07-03 | Merged via PR #28 (not released) |
 | v0.6.28 — Provider diagnostics, metadata hardening, keychain fix | 2026-07-02 | [v0.6.28](https://github.com/abyssbugg/PulseUsage/releases/tag/v0.6.28) |
 | v0.6.27 — Pre-release-candidate state | 2026-06-06 | v0.6.27 |
 | v0.6.26 — Repo production-readiness audit | 2026-06-05 | v0.6.26 |
-| PR-1 — Provider capability contracts | 2026-07-03 | Merged via PR #28 (not released — on main) |
 
 ## Roadmap Discipline
 
