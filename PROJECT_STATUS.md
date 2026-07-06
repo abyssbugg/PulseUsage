@@ -1,76 +1,105 @@
 # Project Status
 
 > **Canonical project state document.** Future agents must read this first.
-> Last updated: 2026-07-06 (Program 1 complete)
+> Last updated: 2026-07-06 (PulseBar v0.8.0 baseline)
 
 ## Current State
 
 | Field | Value |
 |---|---|
-| **Phase** | Stabilization Milestone (pre-v0.7.0 release) |
-| **Main HEAD** | `60b85bf` (Merge PR #45 — extract inject_utils) |
-| **Origin/main** | In sync (0 ahead, 0 behind) |
-| **Latest release** | v0.6.28 (2026-07-02) — published, DMG uploaded |
-| **Commits since v0.6.28** | 30+ (PR #29 maintenance baseline + Program 1: PRs #30–#45) |
-| **Version (all 4 files)** | `0.6.28` — aligned (v0.7.0 not yet bumped) |
-| **Branches** | 2 local (`main`, `research/uiux-redesign` identical to main) |
-| **Worktrees** | 1 (main only) |
-| **Stashes** | 0 |
-| **Remotes** | 1 (`origin` — `https://github.com/abyssbugg/PulseUsage.git`) |
+| **Phase** | PulseBar v0.8.0 — Program A: Product Identity |
+| **Main HEAD** | `8f02d0d` (Merge PR #52 — PulseBar Governance Lock) |
+| **Origin/main** | In sync after PR #52 merge |
+| **Latest published prerelease** | `v0.7.0-rc.1` — published with validated DMG |
+| **Latest stable release** | `v0.6.28` |
+| **Release branch** | `release/v0.7.0` — frozen except verified RC bug fixes |
+| **Active milestone** | GitHub milestone `v0.8.0` (#1) |
+| **Next active branch** | `feat/pulsebar-identity-foundation` |
+| **Protected branches** | `main`, `release/v0.7.0` |
 | **Platform** | macOS 27.0 (Build 26A5368g) — development machine |
+
+## Core Platform Modernization Status
+
+| Program | Status | Evidence |
+|---|---|---|
+| Program 1 — host_api modularization | ✅ Complete | PRs #30–#45 merged; 13 modules under `host_api/` |
+| Program 2 — Capability enforcement | ✅ Complete | PRs #47–#50 merged; all 18 bundled providers use schema v2 `hostCapabilities` |
+| Program 2.5 — Compatibility hardening | ✅ Complete | PR #51 merged; v1 compatibility documented as platform contract |
+| Stabilization — Documentation sync | ✅ Complete | PR #46 merged |
+| Governance Lock — PulseBar v0.8.0 | ✅ Complete | PR #52 merged |
+
+## Release State
+
+| Release | Status | Notes |
+|---|---|---|
+| v0.7.0-rc.1 | ✅ Published | Tag/release published from `release/v0.7.0` at `e6b34c6`; DMG checksum verified |
+| v0.7.0 final | ⬜ Pending | Release branch frozen for RC validation/fixes only |
+| v0.8.0 | 🔄 Planning/Program A | PulseBar product program begins after this baseline approval |
 
 ## Repository Health
 
-| Dimension | Score | Status |
+| Dimension | Status | Notes |
 |---|---|---|
-| Repository health | 9.5/10 | 🟢 Excellent |
-| Branch health | 10/10 | 🟢 Excellent |
-| Worktree health | 10/10 | 🟢 Excellent |
-| Git history health | 9.5/10 | 🟢 Excellent |
-| Release health | 9/10 | 🟢 Excellent |
-| Documentation health | 7/10 | 🟡 Good (drift being fixed this PR) |
-| Governance maturity | 9/10 | 🟢 Excellent (8 governance docs + 6 control-center docs) |
-| CI/CD health | 9/10 | 🟢 Excellent |
-| Dependency health | 9/10 | 🟢 Excellent (all deps current after PR #30/#31) |
-| Issue hygiene | 8/10 | 🟢 Good |
-| Architecture health | 9.5/10 | 🟢 Excellent (Program 1 complete — 13 modules) |
-| **Overall** | **9.1/10** | 🟢 **Excellent** |
+| Main branch | ✅ Healthy | PR #52 merged, docs-only governance lock in main |
+| Release branch | ✅ Protected | `release/v0.7.0` exists and is frozen |
+| Worktree health | ✅ Healthy | One primary worktree; create separate worktree for Program A |
+| Plugin compatibility | ✅ Healthy | schema v1 compatibility retained; schema v2 current |
+| Provider manifests | ✅ Healthy | 18 bundled providers migrated to explicit `hostCapabilities` |
+| Documentation | ✅ Strong | PulseBar governance docs added; control-center docs updated by this baseline |
+| Release readiness | ✅ RC published | v0.7.0-rc.1 smoke-tested and published |
 
-## Program 1 Completion Summary
-
-| Metric | Value |
-|---|---|
-| **Original `host_api.rs`** | 4,816 LOC (single file) |
-| **Final `host_api/mod.rs`** | 1,736 LOC (112 production + 1,624 tests) |
-| **Modules extracted** | 13 (redaction, shared, logging, fs, plist, crypto, env, sqlite, ls, http, keychain, ccusage, utils) |
-| **LOC extracted** | ~3,248 LOC |
-| **Modularization percentage** | 97.7% of production code |
-| **PRs merged** | 16 (#30–#45) |
-| **CI result** | 100% green on all 16 PRs |
-| **Behavior changes** | 0 |
-| **Public API changes** | 0 |
-| **Test count** | 139 Rust + 1,109 JS = 1,248 total |
-
-## Open Work Items
+## Active Work Items
 
 | Item | Type | Status | Priority |
 |---|---|---|---|
-| Documentation synchronization | Task | 🔄 In progress (this PR) | P1 |
-| Repository health audit | Task | ⬜ Pending | P2 |
-| Release readiness audit | Task | ⬜ Pending | P2 |
-| Program 2 readiness review | Task | ⬜ Pending | P2 |
-| Program 2 (Capability Enforcement) | Feature | ⬜ Design approved, not started | P3 |
-| v0.7.0 release | Release | ⬜ Pending Program 2 completion | P3 |
-| Issue #26 (Antigravity LS probe hardening) | Issue | ⬜ Open | P3 |
+| PulseBar v0.8.0 baseline update | Docs | 🔄 In progress | P1 |
+| Program A PR-A1 Product Identity foundation | Feature program | ⬜ Pending baseline approval | P1 |
+| v0.7.0 final release validation | Release | ⬜ Pending RC soak/approval | P1 |
+| Issue #26 Antigravity LS probe hardening | Enhancement | ⬜ Open | P3 |
+| PR #35 aes-gcm 0.11 upgrade | Dependency | ⬜ Open/failing CI | P3 |
 
-## Recent Milestones (v0.6.28 → present)
+## Branch Strategy
 
-| Milestone | PR(s) | Date | Status |
-|---|---|---|---|
-| v0.6.28 release | #14 | 2026-07-02 | ✅ Published |
-| Repository stabilization (governance + control center) | — | 2026-07-03 | ✅ Complete |
-| Maintenance baseline (security + macOS 27 + deps) | #29 | 2026-07-05 | ✅ Merged |
-| Safe dependency bumps | #30 | 2026-07-05 | ✅ Merged |
-| Major dependency bumps | #31 | 2026-07-05 | ✅ Merged |
-| host_api modularization (Program 1) | #32–#45 | 2026-07-06 | ✅ Complete |
-| Documentation synchronization | — | 2026-07-06 | 🔄 In progress |
+| Branch | Role | Policy |
+|---|---|---|
+| `main` | Stable development base | Protected; merge via PR only |
+| `release/v0.7.0` | v0.7.0 RC/final branch | Frozen except verified RC bug fixes |
+| `feat/pulsebar-identity-foundation` | Next Program A branch | Create from `main`; product identity foundation only |
+
+## Stale Branch Risk
+
+Several merged topic branches remain locally/remotely from prior programs. They must not receive new PulseBar work. Program A must start from fresh `main` using `feat/pulsebar-identity-foundation`.
+
+Branches to avoid for Program A:
+
+- `feat/program2-*`
+- `docs/pulsebar-governance-lock`
+- `docs/sync-program-1-completion`
+- `refactor/extract-*`
+- `chore/deps-*`
+- `chore/v0.7.0-maintenance-baseline`
+- `research/uiux-redesign`
+
+## PulseBar Governance Decisions
+
+| Decision | Locked Position |
+|---|---|
+| Product display name | PulseBar |
+| Bundle identifier | Keep `com.abyssbugg.pulseusage` for v0.8.x |
+| Application Support directory | Remain unchanged |
+| Plugin compatibility | Maintain schema v1 compatibility |
+| GitHub repository | Remain PulseUsage for v0.8.0 |
+| Statistics policy | Evidence-backed only |
+| Ollama policy | No fake quota, billing, or usage metrics |
+| UI strategy | Incremental refinement, not rewrite |
+| Branch strategy | One workstream per branch/worktree |
+
+## Next Step
+
+After this baseline report is approved, create a new worktree and branch from `main`:
+
+```text
+feat/pulsebar-identity-foundation
+```
+
+Then begin **Program A PR-A1: Product Identity foundation**. No production rename implementation may happen before that branch/worktree is created and scoped.
