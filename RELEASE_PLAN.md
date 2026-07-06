@@ -1,7 +1,7 @@
 # Release Plan
 
 > **Canonical release strategy.** Future agents must follow this for all releases.
-> Last updated: 2026-07-03
+> Last updated: 2026-07-06
 
 ## Current Release
 
@@ -15,7 +15,7 @@
 | **DMG artifact** | `PulseUsage_0.6.28_aarch64.dmg` (11.5MB) |
 | **SHA256** | `326da0423b25578236fd35abd5ed8f33ee0d3d22851039856e9c2184ed97e0ec` |
 | **Release URL** | https://github.com/abyssbugg/PulseUsage/releases/tag/v0.6.28 |
-| **Main ahead of tag** | 12 commits (post-release work) |
+| **Main ahead of tag** | 30+ commits (PR #29 maintenance baseline + Program 1 PRs #30–#45) |
 
 ## Release Strategy
 
@@ -27,46 +27,56 @@ Full process: [docs/governance/ReleaseProcess.md](./docs/governance/ReleaseProce
 
 ## Next Release: v0.7.0
 
-### Recommendation: Stabilize first. Do NOT release immediately.
+### Status: Nearly ready — Program 2 (capability enforcement) is the last prerequisite
 
-**Rationale:**
-1. The 12 post-v0.6.28 commits are NOT independently release-worthy (incremental fixes + 1 feature).
-2. 6 dependabot PRs should merge first — releasing with pending deps ships stale dependencies.
-3. Issue #26 (Antigravity LS probe hardening) is open and unreleased.
-4. v0.7.0 should bundle: dependabot merges + security hardening + macOS 27 fix + npm refresh + (optionally) modularization + capability model.
-5. No release-blocking issue exists. v0.6.28 is stable and published.
+**Completed for v0.7.0:**
+- ✅ Dependency refresh (PR #30 safe bumps + PR #31 major bumps)
+- ✅ Security hardening (PR #29 — 8 items resolved)
+- ✅ macOS 27 keychain write fix (PR #29)
+- ✅ host_api modularization (Program 1 — PRs #32–#45)
+- ✅ npm deps refresh (PR #30, #31)
 
-### v0.7.0 Scope (proposed)
+**Remaining for v0.7.0:**
+- ⬜ Plugin capability manifest enforcement (Program 2 — design approved, 6 PRs, ~9 hours)
+- ⬜ `deleteGenericPassword` host impl (part of Program 2)
+- ⬜ Documentation synchronization (this PR)
+- ⬜ Version bump (4 files aligned)
+- ⬜ CHANGELOG entry
+- ⬜ Release readiness report (docs/release-readiness/v0.7.0.md)
+- ⬜ Tag + DMG + publish
 
-| Item | Effort | Priority |
-|---|---|---|
-| Merge 6 dependabot PRs (#18-#23) | 1 hour | P1 |
-| Security hardening PR (8 items) | 3 hours | P2 |
-| macOS 27 keychain write fix | 30 min | P2 |
-| npm deps refresh (batch PR) | 2 hours | P3 |
-| `host_api.rs` modularization | 4-6 hours | P3 |
-| Plugin capability manifest enforcement | 6-8 hours | P3 |
-| `deleteGenericPassword` host impl | 20 min | P3 |
-| Perplexity `Agentic Research` classification | 1 day (research) | P3 |
-| **Total** | ~2 weeks | |
+### v0.7.0 Scope
+
+| Item | Effort | Priority | Status |
+|---|---|---|---|
+| Merge 6 dependabot PRs (#18-#23) | 1 hour | P1 | ✅ Superseded by PR #29/#30/#31 |
+| Security hardening PR (8 items) | 3 hours | P2 | ✅ Complete (PR #29) |
+| macOS 27 keychain write fix | 30 min | P2 | ✅ Complete (PR #29) |
+| npm deps refresh (batch PR) | 2 hours | P3 | ✅ Complete (PR #30, #31) |
+| host_api modularization | 4-6 hours | P3 | ✅ Complete (Program 1) |
+| Plugin capability manifest enforcement | 6-8 hours | P3 | ⬜ Design approved (Program 2) |
+| `deleteGenericPassword` host impl | 20 min | P3 | ⬜ Part of Program 2 |
+| Perplexity `Agentic Research` classification | 1 day (research) | P3 | ⬜ Deferred — needs research |
+| **Remaining** | ~1 day | | |
 
 ### v0.7.0 Release Blockers
 
-- [ ] 6 dependabot PRs merged
-- [ ] Security hardening PR merged
-- [ ] macOS 27 keychain write fix verified on macOS 27.0
-- [ ] Full test suite green (1,200+ tests)
-- [ ] CI green on main
-- [ ] Production verification report approved
+- [x] 6 dependabot PRs merged (superseded by PR #29/#30/#31)
+- [x] Security hardening PR merged (PR #29)
+- [x] macOS 27 keychain write fix verified on macOS 27.0
+- [x] Full test suite green (139 Rust + 1,109 JS = 1,248 tests)
+- [x] CI green on main
+- [ ] Documentation synchronized (this PR)
+- [ ] Program 2 (capability enforcement) complete
 - [ ] Version bump (4 files aligned)
 - [ ] CHANGELOG entry added
 - [ ] Release readiness report (docs/release-readiness/v0.7.0.md)
 
 ### v0.7.0 Timeline (estimated)
 
-- **Week 1:** Dependabot merges + security hardening + macOS 27 fix + npm refresh
-- **Week 2:** Modularization + capability manifest + Perplexity classification
-- **End of Week 2:** v0.7.0 release
+- **Complete:** Dependabot merges + security hardening + macOS 27 fix + npm refresh + modularization
+- **Remaining:** Program 2 (capability enforcement, ~9 hours, 6 PRs) + doc sync + release process (~2 hours)
+- **Estimated release:** Within 1-2 working sessions after Program 2 approval
 
 ## Future Releases
 

@@ -21,7 +21,7 @@ IMP-001 is executable against the repository at `origin/main` @ `4f083ee` (v0.6.
 |-------|--------|
 | Vitest | 1089 tests pass |
 | Cargo test | Requires `bun run bundle:plugins` in fresh worktree |
-| `host_api.rs` | 4,617 LOC (split undersized in original IMP) |
+| `host_api/` | 4,816 LOC → 13 modules (Program 1 complete, 97.7% extracted) |
 | Settings | Dual path: `LazyStore` + raw disk read in `cache.rs` + `tray.rs` |
 | Updater | Not in `Cargo.toml`; `use-app-update.ts` is stub |
 | `publish.yml` | Disabled; no signing/notarization |

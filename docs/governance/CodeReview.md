@@ -72,7 +72,7 @@ git show <commit> -- <flagged-file> | grep <flagged-line-context>
 ### When required
 
 - **All non-trivial changes** (logic changes, new features, security-sensitive code)
-- **All changes to `host_api.rs`** (security-critical: keychain, plist, sqlite, http, redaction)
+- **All changes to `host_api/`** (security-critical: keychain, plist, sqlite, http, redaction)
 - **All new plugins or plugin manifest changes** (per AGENTS.md: audit redaction lists)
 - **All CI/release script changes**
 
@@ -85,7 +85,7 @@ git show <commit> -- <flagged-file> | grep <flagged-line-context>
 ### Reviewer count
 
 - **1 human reviewer** minimum for non-trivial PRs.
-- **2 human reviewers** for security-critical changes (`host_api.rs`, redaction, auth).
+- **2 human reviewers** for security-critical changes (`host_api/`, redaction, auth).
 
 ## Review Checklist
 

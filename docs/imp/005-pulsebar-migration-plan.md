@@ -51,7 +51,7 @@ Migrate the PulseUsage codebase to the PulseBar identity (per EDR-001) with zero
 | `src-tauri/src/identity.rs` | 2 | `RELEASES_URL` constant (`github.com/abyssbugg/PulseUsage/releases`) + doc comment | **Low** — designed for rename. Update URL + comment. |
 | `src-tauri/src/lib.rs` | 1 | `log::info!("PulseUsage v{} starting", version)` | **Low** — use `identity::app_display_name()`. |
 | `src-tauri/src/panel.rs` | 4 | `PulseUsagePanel`, `PulseUsagePanelEventHandler` (Rust type names) | **Medium** — type renames; mechanical but touches multiple call sites. |
-| `src-tauri/src/plugin_engine/host_api.rs` | (present) | User-Agent strings, log prefixes | **Low** — mostly via `plugin_id` and `app_display_name`. |
+| `src-tauri/src/plugin_engine/host_api/` (all modules) | (present) | User-Agent strings, log prefixes | **Low** — mostly via `plugin_id` and `app_display_name`. |
 | `src-tauri/src/plugin_engine/runtime.rs` | (present) | `__pulseusage_ctx`, `__pulseusage_plugin` global names | **HIGH** — **JS-visible global names**. Changing breaks all 19 plugins. Must coordinate with plugin migration. |
 | `src-tauri/src/plugin_engine/diagnostics.rs` | (present) | Redaction patterns | **Low** — follows plugin_id. |
 | `src-tauri/src/diagnostics.rs` | (present) | Various | **Low** |
@@ -176,7 +176,7 @@ user preferences, app support dir, log dir
 
 **Files:**
 - `src-tauri/src/plugin_engine/runtime.rs`: global registration + patch functions
-- `src-tauri/src/plugin_engine/host_api.rs`: `__pulseusage_ctx` references
+- `src-tauri/src/plugin_engine/host_api/` (all modules): `__pulseusage_ctx` references
 - `plugins/*/plugin.js` (all 19): `globalThis.__pulseusage_plugin` registration
 - `plugins/test-helpers.js`: test global setup
 - `plugins/*/plugin.test.js` (all): test assertions

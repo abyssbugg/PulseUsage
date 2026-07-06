@@ -99,7 +99,7 @@ These features are user-facing and can mislead users if based on weak data. They
 
 - Provider metadata must not contain raw credentials, bearer tokens, emails, account IDs, organization IDs, or raw provider payloads.
 - Provider plugins must redact secrets in logs, diagnostics, cacheable output, and local HTTP API output.
-- New auth sources require `host_api.rs` redaction tests.
+- New auth sources require `host_api/redaction.rs` redaction tests.
 - Ollama support must use documented APIs only.
 - Usage observations must store normalized metrics only, not raw request/response bodies.
 

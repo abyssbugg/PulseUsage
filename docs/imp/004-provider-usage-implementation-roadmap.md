@@ -103,7 +103,7 @@ Add Ollama Cloud as the first major new provider under the baseline.
 - `plugins/ollama/plugin.test.js`
 - `docs/providers/ollama.md`
 - `README.md`
-- `src-tauri/src/plugin_engine/host_api.rs` if `OLLAMA_API_KEY` env access is added.
+- `src-tauri/src/plugin_engine/host_api/env.rs` if `OLLAMA_API_KEY` env access is added.
 - Provider validator fixtures if needed.
 
 ### Dependencies

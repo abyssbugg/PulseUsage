@@ -46,7 +46,7 @@ Fix keychain `readGenericPassword` signature mismatch that broke Copilot, Cursor
 - Live: copilot and cursor succeed with HTTP 200
 
 ## Files changed
-- `src-tauri/src/plugin_engine/host_api.rs` (+54, -3)
+- `src-tauri/src/plugin_engine/host_api/mod.rs` (+54, -3)
 - `docs/plugins/schema.md` (+30)
 ```
 
