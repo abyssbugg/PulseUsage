@@ -91,6 +91,11 @@ pub struct PluginManifest {
     pub brand_color: Option<String>,
     #[serde(default, deserialize_with = "deserialize_optional_capabilities")]
     pub capabilities: Option<ProviderCapabilities>,
+    /// Host API capabilities (schema v2). Array of strings like
+    /// `"fsRead"`, `"keychainWrite"`, etc. If absent, capabilities are
+    /// inferred from the plugin ID via the v1 compatibility map.
+    #[serde(default)]
+    pub host_capabilities: Vec<String>,
     pub lines: Vec<ManifestLine>,
     #[serde(default)]
     pub links: Vec<PluginLink>,
