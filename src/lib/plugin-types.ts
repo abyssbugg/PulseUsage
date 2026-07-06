@@ -66,7 +66,7 @@ export type ProviderDiagnostics = {
   capabilitySource: CapabilitySource
   capabilityCount: number
   authDetected: AuthDetectedStatus
-  dataSourceReachability: DataSourceReachability
+  dataSourceReachable: DataSourceReachability
   lastSuccessfulRefreshAt: number | null
   manifestMetrics: ManifestMetricDiagnostic[]
   returnedMetrics: ReturnedMetricDiagnostic[]
