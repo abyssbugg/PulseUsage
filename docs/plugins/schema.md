@@ -64,13 +64,14 @@ Bundled plugins live under `src-tauri/resources/bundled_plugins/<id>/`.
 
 | Field           | Type   | Required | Description                                |
 | --------------- | ------ | -------- | ------------------------------------------ |
-| `schemaVersion` | number | Yes      | Always `1`                                 |
+| `schemaVersion` | number | Yes      | `1` (legacy) or `2` (current — adds `hostCapabilities`) |
 | `id`            | string | Yes      | Unique identifier (kebab-case recommended) |
 | `name`          | string | Yes      | Display name shown in UI                   |
 | `version`       | string | Yes      | Semver version                             |
 | `entry`         | string | Yes      | Relative path to JS entry file             |
 | `icon`          | string | Yes      | Relative path to SVG icon file             |
 | `links`         | array  | No       | Optional quick links shown on detail page  |
+| `hostCapabilities` | array of strings | No (schema v2) | Host API capabilities the plugin needs. If absent, capabilities are inferred from the plugin ID via the v1 compatibility map. See [Capabilities Reference](./capabilities.md). |
 | `capabilities`  | object | No       | Optional provider capability metadata      |
 | `lines`         | array  | Yes      | Output shape used for loading skeletons    |
 

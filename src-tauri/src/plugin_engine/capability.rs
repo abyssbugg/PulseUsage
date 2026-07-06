@@ -397,4 +397,141 @@ mod tests {
         assert!(set.contains(HostCapability::CryptoSha));
         assert!(set.contains(HostCapability::EnvRead));
     }
+
+    // --- Compatibility regression tests (Program 2.5 Task 5) ---
+
+    #[test]
+    fn schema_v1_plugin_with_known_id_gets_inferred_capabilities() {
+        // A schema v1 plugin (no hostCapabilities) with a known plugin ID
+        // falls back to the v1 compatibility map. This is the legacy path
+        // for third-party plugins that predate schema v2.
+        let set = infer_v1_capabilities("cursor");
+        assert!(!set.is_empty(), "known plugin IDs get inferred caps");
+        assert!(set.contains(HostCapability::KeychainRead));
+    }
+
+    #[test]
+    fn schema_v1_plugin_with_unknown_id_gets_no_capabilities() {
+        // A schema v1 plugin with an unknown plugin ID gets nothing beyond
+        // log + utils. This is the fail-safe behavior for new third-party
+        // plugins that have not been added to the v1 compat map.
+        let set = infer_v1_capabilities("totally-unknown-third-party");
+        assert!(set.is_empty(), "unknown plugins get log + utils only");
+    }
+
+    #[test]
+    fn schema_v2_plugin_with_empty_host_capabilities_gets_nothing() {
+        // A schema v2 plugin that declares hostCapabilities: [] explicitly
+        // gets no host API access. This is distinct from omitting the
+        // field (which triggers v1 inference). An empty array is an
+        // explicit declaration of "no capabilities needed".
+        let set = HostCapabilitySet::from_strings(&[]);
+        assert!(set.is_empty());
+    }
+
+    #[test]
+    fn schema_v2_plugin_with_explicit_capabilities_does_not_use_v1_map() {
+        // When hostCapabilities is present, the v1 map is NOT consulted.
+        // The explicit declaration is authoritative even if the plugin ID
+        // is known to the v1 map. This prevents drift between the two
+        // sources and makes the explicit declaration the source of truth.
+        let explicit = HostCapabilitySet::from_strings(&["envRead".to_string()]);
+        let inferred = infer_v1_capabilities("cursor");
+        // Explicit has only envRead; inferred has keychain/sqlite.
+        assert!(explicit.contains(HostCapability::EnvRead));
+        assert!(!explicit.contains(HostCapability::KeychainRead));
+        assert!(inferred.contains(HostCapability::KeychainRead));
+        // The two sets differ — explicit does not inherit from inference.
+        assert_ne!(explicit.len(), inferred.len());
+    }
+
+    #[test]
+    fn mixed_environment_v1_and_v2_plugins_coexist() {
+        // A mixed environment has some v1 plugins (inferred) and some v2
+        // plugins (explicit). Both paths must work independently. The
+        // orchestrator checks hostCapabilities per plugin and does not
+        // carry state between probes.
+        let v1_caps = infer_v1_capabilities("cursor");
+        let v2_caps = HostCapabilitySet::from_strings(&["fsRead".to_string()]);
+        assert!(v1_caps.contains(HostCapability::SqliteExec));
+        assert!(!v2_caps.contains(HostCapability::SqliteExec));
+        assert!(v2_caps.contains(HostCapability::FsRead));
+    }
+
+    #[test]
+    fn third_party_plugin_with_unknown_capabilities_drops_silently() {
+        // A third-party plugin may declare a capability string that does
+        // not exist in the current HostCapability enum (e.g., a newer
+        // capability from a future version, or a typo). Unknown strings
+        // are silently dropped (fail-safe) so the plugin loads but does
+        // not get the unknown capability.
+        let set = HostCapabilitySet::from_strings(&[
+            "fsRead".to_string(),
+            "futureCapability".to_string(),
+            "keychainRead".to_string(),
+        ]);
+        assert!(set.contains(HostCapability::FsRead));
+        assert!(set.contains(HostCapability::KeychainRead));
+        assert_eq!(set.len(), 2, "unknown capability dropped");
+    }
+
+    #[test]
+    fn malformed_capability_strings_are_dropped() {
+        // Malformed entries (non-string, empty, whitespace-only) are
+        // dropped. The runtime does not crash on a malformed manifest.
+        let set = HostCapabilitySet::from_strings(&[
+            "fsRead".to_string(),
+            "".to_string(),
+            "   ".to_string(),
+            "keychainRead".to_string(),
+        ]);
+        assert!(set.contains(HostCapability::FsRead));
+        assert!(set.contains(HostCapability::KeychainRead));
+        assert_eq!(set.len(), 2, "empty/whitespace entries dropped");
+    }
+
+    #[test]
+    fn duplicate_capability_strings_deduplicate() {
+        // A plugin that declares the same capability twice does not get
+        // it twice — the set deduplicates.
+        let set = HostCapabilitySet::from_strings(&[
+            "fsRead".to_string(),
+            "fsRead".to_string(),
+            "fsRead".to_string(),
+        ]);
+        assert!(set.contains(HostCapability::FsRead));
+        assert_eq!(set.len(), 1, "duplicates deduplicated");
+    }
+
+    #[test]
+    fn capability_strings_are_trimmed_before_parsing() {
+        // Leading/trailing whitespace is trimmed before matching. This
+        // tolerates formatting differences in plugin.json.
+        let set = HostCapabilitySet::from_strings(&[
+            "  fsRead  ".to_string(),
+            "keychainRead".to_string(),
+        ]);
+        assert!(set.contains(HostCapability::FsRead));
+        assert!(set.contains(HostCapability::KeychainRead));
+        assert_eq!(set.len(), 2);
+    }
+
+    #[test]
+    fn all_returns_every_capability_for_test_fixtures() {
+        // HostCapabilitySet::all() is used by test fixtures that need to
+        // exercise the full host API surface. It must include every
+        // capability so tests do not silently skip modules.
+        let set = HostCapabilitySet::all();
+        assert!(!set.is_empty());
+        assert!(set.contains(HostCapability::FsRead));
+        assert!(set.contains(HostCapability::FsWrite));
+        assert!(set.contains(HostCapability::HttpRequest));
+        assert!(set.contains(HostCapability::KeychainRead));
+        assert!(set.contains(HostCapability::SqliteQuery));
+        assert!(set.contains(HostCapability::EnvRead));
+        assert!(set.contains(HostCapability::CcusageQuery));
+        assert!(set.contains(HostCapability::CryptoAes));
+        assert!(set.contains(HostCapability::PlistRead));
+        assert!(set.contains(HostCapability::LsDiscover));
+    }
 }

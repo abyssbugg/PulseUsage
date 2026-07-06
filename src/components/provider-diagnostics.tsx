@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge"
 import { buildProviderDiagnostics } from "@/lib/provider-diagnostics"
 import type {
   AuthDetectedStatus,
+  CapabilitySource,
   DataSourceReachability,
   DiagnosticsHealth,
   DiagnosticsLikelyCause,
@@ -39,6 +40,11 @@ const PARSER_LABELS: Record<ParserExecutionStatus, string> = {
   failed: "Failed",
 }
 
+const CAPABILITY_SOURCE_LABELS: Record<CapabilitySource, string> = {
+  explicit: "Explicit",
+  inferred: "Inferred (Legacy)",
+}
+
 const CAUSE_LABELS: Record<DiagnosticsLikelyCause, string> = {
   authMissing: "Auth missing",
   authRejected: "Auth rejected",
@@ -73,6 +79,14 @@ export function ProviderDiagnosticsSection({ plugin }: ProviderDiagnosticsSectio
         <DiagnosticRow
           label="Last success"
           value={formatLastSuccess(diagnostics.lastSuccessfulRefreshAt)}
+        />
+        <DiagnosticRow
+          label="Schema"
+          value={`v${diagnostics.schemaVersion}`}
+        />
+        <DiagnosticRow
+          label="Capabilities"
+          value={`${CAPABILITY_SOURCE_LABELS[diagnostics.capabilitySource]} (${diagnostics.capabilityCount})`}
         />
       </div>
 

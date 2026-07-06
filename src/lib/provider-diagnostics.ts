@@ -113,6 +113,9 @@ export function buildProviderDiagnostics(plugin: PluginDisplayState): ProviderDi
   return {
     providerLoaded: runtime?.providerLoaded ?? hasRuntimeData,
     providerVersion: runtime?.providerVersion ?? plugin.meta.version ?? null,
+    schemaVersion: runtime?.schemaVersion ?? 1,
+    capabilitySource: runtime?.capabilitySource ?? "inferred",
+    capabilityCount: runtime?.capabilityCount ?? 0,
     authDetected,
     dataSourceReachable,
     lastSuccessfulRefreshAt:
