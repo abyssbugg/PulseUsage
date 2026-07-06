@@ -97,8 +97,8 @@ function validateProvider(rootDir, providerId, seenManifestIds, result) {
   }
 
   const manifestId = typeof manifest.id === "string" ? manifest.id.trim() : ""
-  if (manifest.schemaVersion !== 1) {
-    addIssue(result.errors, "invalid-schema-version", providerId, "schemaVersion must be 1.", manifestPath)
+  if (manifest.schemaVersion !== 1 && manifest.schemaVersion !== 2) {
+    addIssue(result.errors, "invalid-schema-version", providerId, "schemaVersion must be 1 or 2.", manifestPath)
   }
   if (!manifestId) {
     addIssue(result.errors, "missing-provider-id", providerId, "id must be a non-empty string.", manifestPath)
@@ -138,6 +138,29 @@ function validateProvider(rootDir, providerId, seenManifestIds, result) {
   if (manifest.brandColor !== undefined && manifest.brandColor !== null) {
     if (typeof manifest.brandColor !== "string" || !/^#[0-9A-Fa-f]{6}$/.test(manifest.brandColor)) {
       addIssue(result.errors, "invalid-brand-color", providerId, "brandColor must be a 6-digit hex color.", manifestPath)
+    }
+  }
+
+  // Schema v2: hostCapabilities must be an array of known capability strings.
+  // Unknown strings are silently dropped by the Rust runtime (fail-safe), but
+  // we warn here so plugin authors catch typos during development.
+  const KNOWN_HOST_CAPABILITIES = new Set([
+    "fsRead", "fsWrite", "fsListDir",
+    "keychainRead", "keychainWrite", "keychainDelete",
+    "httpRequest", "httpDangerousLocalhostTls",
+    "sqliteQuery", "sqliteExec",
+    "plistRead", "ccusageQuery", "lsDiscover",
+    "cryptoAes", "cryptoSha", "envRead",
+  ])
+  if (manifest.hostCapabilities !== undefined && manifest.hostCapabilities !== null) {
+    if (!Array.isArray(manifest.hostCapabilities)) {
+      addIssue(result.errors, "invalid-host-capabilities", providerId, "hostCapabilities must be an array of strings.", manifestPath)
+    } else {
+      for (const cap of manifest.hostCapabilities) {
+        if (typeof cap !== "string" || !KNOWN_HOST_CAPABILITIES.has(cap)) {
+          addIssue(result.warnings, "unknown-host-capability", providerId, `hostCapabilities contains unknown or non-string entry: ${JSON.stringify(cap)}.`, manifestPath)
+        }
+      }
     }
   }
 
