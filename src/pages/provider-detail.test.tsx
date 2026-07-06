@@ -104,6 +104,9 @@ describe("ProviderDetailPage", () => {
             diagnostics: {
               providerLoaded: true,
               providerVersion: "0.1.0",
+              schemaVersion: 1,
+              capabilitySource: "inferred",
+              capabilityCount: 3,
               authDetected: "unknown",
               dataSourceReachable: "reachable",
               lastSuccessfulRefreshAt: null,

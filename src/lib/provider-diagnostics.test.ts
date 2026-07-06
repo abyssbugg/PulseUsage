@@ -37,6 +37,9 @@ function pluginState(overrides: Partial<PluginDisplayState> = {}): PluginDisplay
       diagnostics: {
         providerLoaded: true,
         providerVersion: "0.1.0",
+        schemaVersion: 2,
+        capabilitySource: "explicit",
+        capabilityCount: 5,
         authDetected: "detected",
         dataSourceReachable: "reachable",
         lastSuccessfulRefreshAt: null,
@@ -72,6 +75,9 @@ describe("buildProviderDiagnostics", () => {
 
     expect(diagnostics.providerLoaded).toBe(true)
     expect(diagnostics.providerVersion).toBe("0.1.0")
+    expect(diagnostics.schemaVersion).toBe(2)
+    expect(diagnostics.capabilitySource).toBe("explicit")
+    expect(diagnostics.capabilityCount).toBe(5)
     expect(diagnostics.authDetected).toBe("detected")
     expect(diagnostics.dataSourceReachable).toBe("reachable")
     expect(diagnostics.lastSuccessfulRefreshAt).toBe(1_800_000_000_000)
@@ -82,6 +88,19 @@ describe("buildProviderDiagnostics", () => {
       { label: "Bonus Credits", type: "text", scope: "detail", classification: "optional" },
       { label: "Plan", type: "badge", scope: "overview", classification: "unknown" },
     ])
+  })
+
+  it("falls back to v1-inferred defaults when runtime diagnostics omit capability fields", () => {
+    // A legacy v1 plugin that never sends schemaVersion/capabilitySource
+    // in its runtime diagnostics should fall back to schema v1 + inferred.
+    const plugin = pluginState()
+    delete (plugin.data!.diagnostics as any).schemaVersion
+    delete (plugin.data!.diagnostics as any).capabilitySource
+    delete (plugin.data!.diagnostics as any).capabilityCount
+    const diagnostics = buildProviderDiagnostics(plugin)
+    expect(diagnostics.schemaVersion).toBe(1)
+    expect(diagnostics.capabilitySource).toBe("inferred")
+    expect(diagnostics.capabilityCount).toBe(0)
   })
 
   it("reports required missing metrics as a degraded health summary", () => {

@@ -122,6 +122,29 @@ fn run_probe_with_timeout(
     let icon_url = plugin.icon_data_url.clone();
     let app_data = app_data_dir.clone();
 
+    // Compute capability metadata once so every code path (success and
+    // error) reports the same schema_version / capability_source / count.
+    let schema_version = plugin.manifest.schema_version;
+    let (capability_source, capability_count) = if plugin.manifest.host_capabilities.is_empty() {
+        let inferred = crate::plugin_engine::capability::infer_v1_capabilities(&plugin_id);
+        let count = inferred.len() as u32;
+        log::warn!(
+            "Plugin \"{}\" is using legacy capability inference (schema v{}, {} capabilities). \
+             Please migrate to explicit hostCapabilities in plugin.json. \
+             See docs/plugins/capabilities.md for the migration path.",
+            plugin_id,
+            schema_version,
+            count
+        );
+        (crate::plugin_engine::diagnostics::CapabilitySource::Inferred, count)
+    } else {
+        let explicit = crate::plugin_engine::capability::HostCapabilitySet::from_strings(
+            &plugin.manifest.host_capabilities,
+        );
+        let count = explicit.len() as u32;
+        (crate::plugin_engine::diagnostics::CapabilitySource::Explicit, count)
+    };
+
     ctx.with(|ctx| {
         let capabilities = if plugin.manifest.host_capabilities.is_empty() {
             crate::plugin_engine::capability::infer_v1_capabilities(&plugin_id)
@@ -355,7 +378,14 @@ fn run_probe_with_timeout(
             display_name,
             plan,
             capabilities,
-            diagnostics: build_diagnostics(plugin, &lines, diagnostics_recorder.snapshot()),
+            diagnostics: build_diagnostics(
+                plugin,
+                &lines,
+                diagnostics_recorder.snapshot(),
+                schema_version,
+                capability_source,
+                capability_count,
+            ),
             lines,
             icon_url,
         }
@@ -918,12 +948,35 @@ fn error_output_with_facts(
     host_facts: SafeHostFacts,
 ) -> PluginOutput {
     let lines = vec![error_line(message)];
+    let schema_version = plugin.manifest.schema_version;
+    let (capability_source, capability_count) = if plugin.manifest.host_capabilities.is_empty() {
+        let inferred = crate::plugin_engine::capability::infer_v1_capabilities(&plugin.manifest.id);
+        (
+            crate::plugin_engine::diagnostics::CapabilitySource::Inferred,
+            inferred.len() as u32,
+        )
+    } else {
+        let explicit = crate::plugin_engine::capability::HostCapabilitySet::from_strings(
+            &plugin.manifest.host_capabilities,
+        );
+        (
+            crate::plugin_engine::diagnostics::CapabilitySource::Explicit,
+            explicit.len() as u32,
+        )
+    };
     PluginOutput {
         provider_id: plugin.manifest.id.clone(),
         display_name: plugin.manifest.name.clone(),
         plan: None,
         capabilities: None,
-        diagnostics: build_diagnostics(plugin, &lines, host_facts),
+        diagnostics: build_diagnostics(
+            plugin,
+            &lines,
+            host_facts,
+            schema_version,
+            capability_source,
+            capability_count,
+        ),
         lines,
         icon_url: plugin.icon_data_url.clone(),
     }
@@ -933,6 +986,9 @@ fn build_diagnostics(
     plugin: &LoadedPlugin,
     lines: &[MetricLine],
     host_facts: SafeHostFacts,
+    schema_version: u32,
+    capability_source: crate::plugin_engine::diagnostics::CapabilitySource,
+    capability_count: u32,
 ) -> ProviderDiagnostics {
     let manifest_metrics: Vec<ManifestMetricDiagnostic> = plugin
         .manifest
@@ -984,6 +1040,9 @@ fn build_diagnostics(
     ProviderDiagnostics {
         provider_loaded: true,
         provider_version: Some(plugin.manifest.version.clone()),
+        schema_version,
+        capability_source,
+        capability_count,
         auth_detected,
         data_source_reachable,
         last_successful_refresh_at: None,
@@ -1191,7 +1250,7 @@ mod tests {
     fn test_plugin(entry_script: &str) -> LoadedPlugin {
         LoadedPlugin {
             manifest: PluginManifest {
-                schema_version: 1,
+                schema_version: 2,
                 id: "test".to_string(),
                 name: "Test".to_string(),
                 version: "0.0.0".to_string(),
@@ -1340,6 +1399,13 @@ mod tests {
             output.diagnostics.provider_version.as_deref(),
             Some("0.1.0")
         );
+        // Program 2.5: capability source diagnostics
+        assert_eq!(output.diagnostics.schema_version, 2);
+        assert_eq!(
+            output.diagnostics.capability_source,
+            crate::plugin_engine::diagnostics::CapabilitySource::Explicit
+        );
+        assert_eq!(output.diagnostics.capability_count, 1, "fsRead only");
         assert_eq!(
             output.diagnostics.parser_execution_status,
             ParserExecutionStatus::Success
@@ -1758,5 +1824,86 @@ mod tests {
             output.lines.first(),
             Some(MetricLine::Text { label, value, .. }) if label == "Status" && value == "ok"
         ));
+    }
+
+    // --- Program 2.5 Task 5: capability source diagnostics ---
+
+    #[test]
+    fn diagnostics_reports_inferred_source_for_v1_plugin_without_host_capabilities() {
+        // A schema v1 plugin (hostCapabilities absent) with a known plugin
+        // ID falls back to v1 inference. Diagnostics must report
+        // capabilitySource = Inferred and the inferred count.
+        let mut plugin = test_plugin(
+            r#"
+            globalThis.__pulseusage_plugin = {
+                probe(ctx) {
+                    return { lines: [ctx.line.badge({ label: "Status", text: "ok" })] };
+                }
+            };
+            "#,
+        );
+        // Use a known plugin ID so v1 inference grants capabilities.
+        plugin.manifest.id = "cursor".to_string();
+        plugin.manifest.host_capabilities = vec![]; // absent -> v1 inference
+        plugin.manifest.schema_version = 1;
+
+        let output = run_probe(&plugin, &temp_app_dir("v1-inferred"), "0.0.0");
+        assert_eq!(output.diagnostics.schema_version, 1);
+        assert_eq!(
+            output.diagnostics.capability_source,
+            crate::plugin_engine::diagnostics::CapabilitySource::Inferred
+        );
+        // cursor v1 map: KeychainRead, KeychainWrite, SqliteQuery, SqliteExec = 4
+        assert_eq!(output.diagnostics.capability_count, 4);
+    }
+
+    #[test]
+    fn diagnostics_reports_explicit_source_for_v2_plugin_with_host_capabilities() {
+        // A schema v2 plugin with explicit hostCapabilities reports
+        // capabilitySource = Explicit and the declared count.
+        let plugin = test_plugin(
+            r#"
+            globalThis.__pulseusage_plugin = {
+                probe(ctx) {
+                    return { lines: [ctx.line.badge({ label: "Status", text: "ok" })] };
+                }
+            };
+            "#,
+        );
+        // test_plugin() already sets host_capabilities: ["fsRead"] and schema_version: 2
+        let output = run_probe(&plugin, &temp_app_dir("v2-explicit"), "0.0.0");
+        assert_eq!(output.diagnostics.schema_version, 2);
+        assert_eq!(
+            output.diagnostics.capability_source,
+            crate::plugin_engine::diagnostics::CapabilitySource::Explicit
+        );
+        assert_eq!(output.diagnostics.capability_count, 1, "fsRead only");
+    }
+
+    #[test]
+    fn diagnostics_reports_zero_capabilities_for_unknown_v1_plugin() {
+        // A schema v1 plugin with an unknown plugin ID gets zero
+        // capabilities via v1 inference (fail-safe for third-party
+        // plugins not in the compat map).
+        let mut plugin = test_plugin(
+            r#"
+            globalThis.__pulseusage_plugin = {
+                probe(ctx) {
+                    return { lines: [ctx.line.badge({ label: "Status", text: "ok" })] };
+                }
+            };
+            "#,
+        );
+        plugin.manifest.id = "totally-unknown-third-party".to_string();
+        plugin.manifest.host_capabilities = vec![];
+        plugin.manifest.schema_version = 1;
+
+        let output = run_probe(&plugin, &temp_app_dir("v1-unknown"), "0.0.0");
+        assert_eq!(output.diagnostics.schema_version, 1);
+        assert_eq!(
+            output.diagnostics.capability_source,
+            crate::plugin_engine::diagnostics::CapabilitySource::Inferred
+        );
+        assert_eq!(output.diagnostics.capability_count, 0);
     }
 }

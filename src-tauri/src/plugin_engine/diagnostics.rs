@@ -44,6 +44,18 @@ pub enum DiagnosticsHealth {
     Unknown,
 }
 
+/// Source of the host capability set granted to a plugin.
+///
+/// - `Explicit`: plugin declared `hostCapabilities` in its manifest (schema v2)
+/// - `Inferred`: plugin omitted `hostCapabilities` and fell back to the v1
+///   compatibility map (legacy / third-party plugins)
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum CapabilitySource {
+    Explicit,
+    Inferred,
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub enum DiagnosticsLikelyCause {
@@ -93,6 +105,9 @@ pub type MissingMetricDiagnostic = ManifestMetricDiagnostic;
 pub struct ProviderDiagnostics {
     pub provider_loaded: bool,
     pub provider_version: Option<String>,
+    pub schema_version: u32,
+    pub capability_source: CapabilitySource,
+    pub capability_count: u32,
     pub auth_detected: AuthDetected,
     pub data_source_reachable: DataSourceReachability,
     pub last_successful_refresh_at: Option<u64>,
@@ -111,6 +126,9 @@ impl Default for ProviderDiagnostics {
         Self {
             provider_loaded: false,
             provider_version: None,
+            schema_version: 1,
+            capability_source: CapabilitySource::Inferred,
+            capability_count: 0,
             auth_detected: AuthDetected::Unknown,
             data_source_reachable: DataSourceReachability::Unknown,
             last_successful_refresh_at: None,

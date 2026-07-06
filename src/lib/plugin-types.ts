@@ -57,11 +57,16 @@ export type ReturnedMetricDiagnostic = {
 
 export type MissingMetricDiagnostic = ManifestMetricDiagnostic
 
+export type CapabilitySource = "explicit" | "inferred"
+
 export type ProviderDiagnostics = {
   providerLoaded: boolean
   providerVersion: string | null
+  schemaVersion: number
+  capabilitySource: CapabilitySource
+  capabilityCount: number
   authDetected: AuthDetectedStatus
-  dataSourceReachable: DataSourceReachability
+  dataSourceReachability: DataSourceReachability
   lastSuccessfulRefreshAt: number | null
   manifestMetrics: ManifestMetricDiagnostic[]
   returnedMetrics: ReturnedMetricDiagnostic[]
