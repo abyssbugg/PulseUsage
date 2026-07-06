@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { buildReleaseApiUrl } from "@/lib/app-identity"
 
 export interface Release {
   id: number
@@ -10,9 +11,7 @@ export interface Release {
 }
 
 async function fetchReleaseByTag(tag: string): Promise<Release | null> {
-  const url = `https://api.github.com/repos/abyssbugg/PulseUsage/releases/tags/${encodeURIComponent(
-    tag,
-  )}`
+  const url = buildReleaseApiUrl(encodeURIComponent(tag))
   const res = await fetch(url)
 
   if (res.status === 404) {
