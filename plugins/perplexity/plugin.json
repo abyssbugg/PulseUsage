@@ -1,11 +1,12 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "perplexity",
   "name": "Perplexity",
   "version": "0.0.2",
   "entry": "plugin.js",
   "icon": "icon.svg",
   "brandColor": "#20808D",
+  "hostCapabilities": ["fsRead", "httpRequest", "sqliteQuery"],
   "lines": [
     { "type": "progress", "label": "API credits", "scope": "overview", "classification": "optional", "primaryOrder": 1 },
     { "type": "text", "label": "Queries", "scope": "overview", "classification": "planDependent" },

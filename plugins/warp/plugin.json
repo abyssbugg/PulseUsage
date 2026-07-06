@@ -1,11 +1,12 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "warp",
   "name": "Warp",
   "version": "0.0.1",
   "entry": "plugin.js",
   "icon": "icon.svg",
   "brandColor": "#353534",
+  "hostCapabilities": ["fsRead", "plistRead", "sqliteQuery"],
   "lines": [
     { "type": "progress", "label": "Base Credits", "scope": "overview", "classification": "required", "primaryOrder": 1 },
     { "type": "text", "label": "Personal Credits", "scope": "overview", "classification": "optional" },

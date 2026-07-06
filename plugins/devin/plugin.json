@@ -1,11 +1,12 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "devin",
   "name": "Devin",
   "version": "0.0.1",
   "entry": "plugin.js",
   "icon": "icon.svg",
   "brandColor": "#000000",
+  "hostCapabilities": ["fsRead", "httpRequest", "sqliteQuery"],
   "lines": [
     { "type": "progress", "label": "Weekly quota", "scope": "overview", "classification": "required", "primaryOrder": 1 },
     { "type": "progress", "label": "Daily quota", "scope": "overview", "classification": "planDependent" },

@@ -1,11 +1,12 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "claude",
   "name": "Claude",
   "version": "0.0.1",
   "entry": "plugin.js",
   "icon": "icon.svg",
   "brandColor": "#DE7356",
+  "hostCapabilities": ["ccusageQuery", "cryptoSha", "envRead", "fsRead", "fsWrite", "httpRequest", "keychainRead", "keychainWrite"],
   "links": [
     { "label": "Status", "url": "https://status.anthropic.com/" },
     { "label": "Console", "url": "https://console.anthropic.com/" }

@@ -1,11 +1,12 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "minimax",
   "name": "MiniMax",
   "version": "0.0.1",
   "entry": "plugin.js",
   "icon": "icon.svg",
   "brandColor": "#F5433C",
+  "hostCapabilities": ["envRead", "httpRequest"],
   "lines": [
     { "type": "progress", "label": "Session", "scope": "overview", "classification": "required", "primaryOrder": 1 }
   ]

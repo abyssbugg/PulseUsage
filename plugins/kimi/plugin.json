@@ -1,11 +1,12 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "kimi",
   "name": "Kimi",
   "version": "0.0.1",
   "entry": "plugin.js",
   "icon": "icon.svg",
   "brandColor": "#000000",
+  "hostCapabilities": ["fsRead", "fsWrite", "httpRequest"],
   "lines": [
     { "type": "progress", "label": "Session", "scope": "overview", "classification": "optional", "primaryOrder": 1 },
     { "type": "progress", "label": "Weekly", "scope": "overview", "classification": "optional", "primaryOrder": 2 }

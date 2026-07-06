@@ -1,11 +1,12 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "jetbrains-ai-assistant",
   "name": "JetBrains AI Assistant",
   "version": "0.0.1",
   "entry": "plugin.js",
   "icon": "icon.svg",
   "brandColor": "#7d5fe6",
+  "hostCapabilities": ["fsRead", "fsListDir"],
   "lines": [
     { "type": "progress", "label": "Quota", "scope": "overview", "classification": "required", "primaryOrder": 1 },
     { "type": "text", "label": "Used", "scope": "detail", "classification": "required" },
