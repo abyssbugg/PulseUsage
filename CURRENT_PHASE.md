@@ -5,71 +5,94 @@
 
 ## Current Milestone
 
-**Stabilization Milestone** (pre-v0.7.0 release)
+**PulseBar v0.8.0 — Program A: Product Identity**
 
-Program 1 (host_api modularization) is complete. The repository is in a stabilization phase preparing for the v0.7.0 release. Capability enforcement (Program 2) design is approved but not yet implemented.
+Core Platform Modernization is complete. v0.7.0-rc.1 has been published, `release/v0.7.0` is frozen except for verified RC fixes, and the PulseBar Governance Lock has merged. The project is now ready to begin Program A after this baseline update is approved.
+
+## Active Program
+
+| Field | Value |
+|---|---|
+| Product phase | PulseBar v0.8.0 |
+| Active program | Program A |
+| Program name | Product Identity |
+| GitHub milestone | v0.8.0 |
+| Required branch | `feat/pulsebar-identity-foundation` |
+| Protected branches | `main`, `release/v0.7.0` |
+| Release branch policy | `release/v0.7.0` accepts verified RC bug fixes only |
 
 ## What Is Happening Now
 
-1. ✅ **Program 1 complete** — 16 PRs (#30–#45) merged. `host_api.rs` 4,816-LOC monolith decomposed into 13 cohesive modules under `host_api/`.
-2. ✅ **Maintenance baseline merged** — PR #29 resolved all P2 security hardening + macOS 27 compatibility items.
-3. ✅ **Dependency refresh complete** — PR #30 (safe bumps) + PR #31 (major bumps) merged.
-4. ✅ **Program 2 design approved** — Capability enforcement blueprint produced in Program Transition document. 6 PRs estimated, ~9 hours.
-5. 🔄 **Documentation synchronization** — This PR. Updating stale docs to reflect Program 1 completion.
-6. ⬜ **Repository health audit** — Audit branches, tags, releases for cleanup.
-7. ⬜ **Release readiness audit** — Verify v0.7.0 technical readiness.
-8. ⬜ **Program 2 readiness review** — Final go/no-go decision.
+1. ✅ **v0.7.0-rc.1 published** — tag and GitHub prerelease exist with validated DMG artifact.
+2. ✅ **Core Platform Modernization complete** — Program 1, Program 2, and Program 2.5 are merged.
+3. ✅ **PulseBar Governance Lock merged** — PR #52 added the Program Charter, Product Decision Record, dependency diagram, PR sequencing, risk register, and Definitions of Done.
+4. ✅ **v0.8.0 milestone created** — GitHub milestone #1 tracks the PulseBar product program.
+5. 🔄 **v0.8.0 baseline update** — this docs-only update aligns the control-center docs with the new phase.
+6. ⬜ **Program A PR-A1** — Product Identity foundation, to begin only after this baseline report is approved.
 
-## Immediate Next Steps (in order)
+## Locked Decisions for Program A
 
-### Step 1 — Documentation synchronization (this PR)
-Update all stale docs that reference `host_api.rs` monolith. ~30 min.
+| Decision | Locked Position |
+|---|---|
+| Product display name | PulseBar |
+| Bundle identifier | Keep `com.abyssbugg.pulseusage` for v0.8.x |
+| Application Support directory | Remain unchanged |
+| Plugin compatibility | Maintain schema v1 compatibility |
+| GitHub repository | Remain PulseUsage for v0.8.0 |
+| Statistics policy | Evidence-backed only |
+| Ollama policy | No fake quota, billing, or usage metrics |
+| UI strategy | Incremental refinement, not rewrite |
+| Branch strategy | One workstream per branch/worktree |
 
-### Step 2 — Repository health audit
-Audit branches, tags, releases. Produce cleanup plan (no auto-deletion). ~15 min.
+## Immediate Next Steps
 
-### Step 3 — Release readiness audit
-Verify version, changelog, build, CI, packaging for v0.7.0. ~20 min.
+### Step 1 — Baseline approval
+Review this baseline update and confirm the repository is aligned for PulseBar v0.8.0 Program A.
 
-### Step 4 — Program 2 readiness review
-Re-evaluate whether Program 2 should begin immediately or if another prerequisite emerged. ~10 min.
+### Step 2 — Start Program A PR-A1
+Create a separate worktree/branch:
 
-### Step 5 — Decision point
-Based on Task 4 recommendation, either:
-- Begin Program 2 (capability enforcement, 6 PRs), OR
-- Address any prerequisite that emerged from the audit
+```text
+feat/pulsebar-identity-foundation
+```
 
-### Step 6 — v0.7.0 release
-After Program 2 is complete:
-- Version bump to `0.7.0` (4 files + CHANGELOG + release-readiness doc)
-- Tag `v0.7.0` + build DMG + publish release
-- See [RELEASE_PLAN.md](./RELEASE_PLAN.md)
+PR-A1 scope is identity foundation only. No UI redesign, no Ollama, no statistics engine, no bundle identifier change, no repository rename.
 
-## What Is NOT Happening (Forbidden This Phase)
+### Step 3 — Program A sequencing
+Follow `docs/governance/pulsebar/PRSequencing.md`:
 
-- ❌ PulseBar rename (EDR-001 Approved, IMP-005 planned, but execution forbidden until v0.7.0 stabilizes)
-- ❌ UI/UX redesign (2 untracked planning docs exist — left untracked, forbidden scope)
-- ❌ Ollama integration (not sequenced — can be added anytime after v0.7.0)
-- ❌ OpenUsage / CodexBar imports
-- ❌ New release creation (v0.7.0 not ready — Program 2 pending)
-- ❌ Capability enforcement code (design approved, implementation not started)
+1. A1 Identity foundation
+2. A2 User-facing string rename
+3. A3 Artifact naming validation
+4. A4 Docs and release notes update
+5. A5 Screenshots and visual assets
+
+## What Is NOT Happening
+
+- ❌ No work on `release/v0.7.0` except verified RC bug fixes.
+- ❌ No bundle identifier change.
+- ❌ No Application Support directory migration.
+- ❌ No GitHub repository rename.
+- ❌ No schema v1 compatibility removal.
+- ❌ No UI redesign rewrite.
+- ❌ No Ollama implementation until its workstream is explicitly started.
+- ❌ No statistics engine until its workstream is explicitly started.
 
 ## Authorization Model
 
-- **Main Engineering Agent** (this session): sole agent authorized to commit, push, merge, release, or modify the repository.
-- **All other sessions**: research-only. May audit, research, plan, benchmark. Must NOT commit, push, merge, rename, release, or modify.
+- **Main Engineering Agent**: sole agent authorized to commit, push, merge, release, or modify the repository.
+- **All other sessions**: research-only. May audit, research, plan, or benchmark. Must not commit, push, merge, rename, release, or modify.
 
 ## Completion Criteria for This Phase
 
-The stabilization phase is complete when:
-- [x] Program 1 (host_api modularization) complete
-- [x] Maintenance baseline (PR #29) merged
-- [x] Dependency refresh (PR #30, #31) merged
-- [x] Program 2 design approved
-- [ ] Documentation synchronized (this PR)
-- [ ] Repository health audit complete
-- [ ] Release readiness audit complete
-- [ ] Program 2 readiness review complete
-- [ ] Program 2 decision made (begin or defer)
+This baseline phase is complete when:
 
-Once complete, the repository transitions to **Program 2** (if approved) or **v0.7.0 release** (if Program 2 is deferred).
+- [x] PR #52 Governance Lock merged.
+- [x] GitHub milestone `v0.8.0` exists.
+- [x] `CURRENT_PHASE.md` reflects PulseBar v0.8.0 Program A.
+- [x] `PROJECT_STATUS.md` reflects v0.7.0-rc.1 publication and Program A readiness.
+- [x] Branch strategy verified.
+- [x] Stale feature branches identified.
+- [ ] Baseline report approved.
+
+After approval, begin **Program A PR-A1: Product Identity foundation**.
