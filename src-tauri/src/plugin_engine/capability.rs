@@ -128,6 +128,27 @@ impl HostCapabilitySet {
         self.capabilities.len()
     }
 
+    /// Returns a set containing every capability. For test fixtures that
+    /// need to exercise the full host API surface regardless of plugin ID.
+    #[cfg(test)]
+    pub fn all() -> Self {
+        use HostCapability::*;
+        let capabilities = [
+            FsRead, FsWrite, FsListDir,
+            PlistRead,
+            CryptoAes, CryptoSha,
+            EnvRead,
+            HttpRequest,
+            KeychainRead, KeychainWrite, KeychainDelete,
+            SqliteQuery, SqliteExec,
+            LsDiscover,
+            CcusageQuery,
+        ]
+        .into_iter()
+        .collect();
+        Self { capabilities }
+    }
+
     /// Parse a single capability string. Returns `None` for unknown strings.
     fn parse_capability(s: &str) -> Option<HostCapability> {
         let trimmed = s.trim();

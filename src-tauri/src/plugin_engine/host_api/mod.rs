@@ -15,6 +15,7 @@ pub use http::patch_http_wrapper;
 pub use ls::patch_ls_wrapper;
 pub use utils::inject_utils;
 
+use crate::plugin_engine::capability::{HostCapability, HostCapabilitySet};
 use crate::plugin_engine::diagnostics::ProbeDiagnosticsRecorder;
 #[cfg(test)]
 use aes_gcm::{
@@ -37,6 +38,11 @@ pub(crate) fn inject_host_api<'js>(
     app_data_dir: &PathBuf,
     app_version: &str,
 ) -> rquickjs::Result<()> {
+    let capabilities = if cfg!(test) {
+        crate::plugin_engine::capability::HostCapabilitySet::all()
+    } else {
+        crate::plugin_engine::capability::infer_v1_capabilities(plugin_id)
+    };
     inject_host_api_with_deadline(
         ctx,
         plugin_id,
@@ -44,6 +50,7 @@ pub(crate) fn inject_host_api<'js>(
         app_version,
         crate::plugin_engine::shared::ProbeDeadline::none(),
         ProbeDiagnosticsRecorder::default(),
+        capabilities,
     )
 }
 
@@ -54,6 +61,7 @@ pub(crate) fn inject_host_api_with_deadline<'js>(
     app_version: &str,
     deadline: crate::plugin_engine::shared::ProbeDeadline,
     diagnostics_recorder: ProbeDiagnosticsRecorder,
+    capabilities: HostCapabilitySet,
 ) -> rquickjs::Result<()> {
     let globals = ctx.globals();
     let probe_ctx = Object::new(ctx.clone())?;
@@ -79,28 +87,65 @@ pub(crate) fn inject_host_api_with_deadline<'js>(
     probe_ctx.set("app", app_obj)?;
 
     let host = Object::new(ctx.clone())?;
+
+    // Log is always available — not a capability.
     logging::inject_log(ctx, &host, plugin_id)?;
-    fs::inject_fs(ctx, &host, diagnostics_recorder.clone())?;
-    // plist.read is gated to plugins that need it (warp reads Warp-Stable.plist).
-    // Only inject the plist capability for allowed plugin IDs to prevent unrestricted
-    // filesystem reads of arbitrary plist files.
-    const PLIST_ALLOWED: &[&str] = &["warp", "factory", "claude"];
-    if PLIST_ALLOWED.contains(&plugin_id) {
+
+    // Each host.* module is injected only if the plugin declared the
+    // corresponding capability. Undeclared capabilities result in the
+    // JS function not existing on ctx.host (TypeError at call site —
+    // fail-safe).
+    if capabilities.contains(HostCapability::FsRead)
+        || capabilities.contains(HostCapability::FsWrite)
+        || capabilities.contains(HostCapability::FsListDir)
+    {
+        fs::inject_fs(ctx, &host, diagnostics_recorder.clone())?;
+    }
+
+    if capabilities.contains(HostCapability::PlistRead) {
         plist::inject_plist(ctx, &host, diagnostics_recorder.clone())?;
     }
-    crypto::inject_crypto(ctx, &host)?;
-    env::inject_env(ctx, &host, plugin_id, diagnostics_recorder.clone())?;
-    http::inject_http(
-        ctx,
-        &host,
-        plugin_id,
-        deadline,
-        diagnostics_recorder.clone(),
-    )?;
-    keychain::inject_keychain(ctx, &host, plugin_id, diagnostics_recorder.clone())?;
-    sqlite::inject_sqlite(ctx, &host, plugin_id, diagnostics_recorder.clone())?;
-    ls::inject_ls(ctx, &host, plugin_id, diagnostics_recorder.clone())?;
-    ccusage::inject_ccusage(ctx, &host, plugin_id, deadline, diagnostics_recorder)?;
+
+    if capabilities.contains(HostCapability::CryptoAes)
+        || capabilities.contains(HostCapability::CryptoSha)
+    {
+        crypto::inject_crypto(ctx, &host)?;
+    }
+
+    if capabilities.contains(HostCapability::EnvRead) {
+        env::inject_env(ctx, &host, plugin_id, diagnostics_recorder.clone())?;
+    }
+
+    if capabilities.contains(HostCapability::HttpRequest) {
+        http::inject_http(
+            ctx,
+            &host,
+            plugin_id,
+            deadline,
+            diagnostics_recorder.clone(),
+        )?;
+    }
+
+    if capabilities.contains(HostCapability::KeychainRead)
+        || capabilities.contains(HostCapability::KeychainWrite)
+        || capabilities.contains(HostCapability::KeychainDelete)
+    {
+        keychain::inject_keychain(ctx, &host, plugin_id, diagnostics_recorder.clone())?;
+    }
+
+    if capabilities.contains(HostCapability::SqliteQuery)
+        || capabilities.contains(HostCapability::SqliteExec)
+    {
+        sqlite::inject_sqlite(ctx, &host, plugin_id, diagnostics_recorder.clone())?;
+    }
+
+    if capabilities.contains(HostCapability::LsDiscover) {
+        ls::inject_ls(ctx, &host, plugin_id, diagnostics_recorder.clone())?;
+    }
+
+    if capabilities.contains(HostCapability::CcusageQuery) {
+        ccusage::inject_ccusage(ctx, &host, plugin_id, deadline, diagnostics_recorder)?;
+    }
 
     probe_ctx.set("host", host)?;
     globals.set("__pulseusage_ctx", probe_ctx)?;

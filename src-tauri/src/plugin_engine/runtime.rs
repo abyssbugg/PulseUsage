@@ -123,6 +123,13 @@ fn run_probe_with_timeout(
     let app_data = app_data_dir.clone();
 
     ctx.with(|ctx| {
+        let capabilities = if plugin.manifest.host_capabilities.is_empty() {
+            crate::plugin_engine::capability::infer_v1_capabilities(&plugin_id)
+        } else {
+            crate::plugin_engine::capability::HostCapabilitySet::from_strings(
+                &plugin.manifest.host_capabilities,
+            )
+        };
         if host_api::inject_host_api_with_deadline(
             &ctx,
             &plugin_id,
@@ -130,6 +137,7 @@ fn run_probe_with_timeout(
             app_version,
             deadline,
             diagnostics_recorder.clone(),
+            capabilities.clone(),
         )
         .is_err()
         {
@@ -146,7 +154,9 @@ fn run_probe_with_timeout(
                 diagnostics_recorder.snapshot(),
             );
         }
-        if host_api::patch_http_wrapper(&ctx).is_err() {
+        if capabilities.contains(crate::plugin_engine::capability::HostCapability::HttpRequest)
+            && host_api::patch_http_wrapper(&ctx).is_err()
+        {
             if deadline.has_elapsed() {
                 return error_output_with_facts(
                     plugin,
@@ -160,7 +170,9 @@ fn run_probe_with_timeout(
                 diagnostics_recorder.snapshot(),
             );
         }
-        if host_api::patch_ls_wrapper(&ctx).is_err() {
+        if capabilities.contains(crate::plugin_engine::capability::HostCapability::LsDiscover)
+            && host_api::patch_ls_wrapper(&ctx).is_err()
+        {
             if deadline.has_elapsed() {
                 return error_output_with_facts(
                     plugin,
@@ -174,7 +186,9 @@ fn run_probe_with_timeout(
                 diagnostics_recorder.snapshot(),
             );
         }
-        if host_api::patch_ccusage_wrapper(&ctx).is_err() {
+        if capabilities.contains(crate::plugin_engine::capability::HostCapability::CcusageQuery)
+            && host_api::patch_ccusage_wrapper(&ctx).is_err()
+        {
             if deadline.has_elapsed() {
                 return error_output_with_facts(
                     plugin,
@@ -1185,6 +1199,7 @@ mod tests {
                 icon: "icon.svg".to_string(),
                 brand_color: None,
                 capabilities: None,
+                host_capabilities: vec!["fsRead".to_string()],
                 lines: vec![],
                 links: vec![],
             },
