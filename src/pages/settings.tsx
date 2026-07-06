@@ -19,6 +19,7 @@ import { GripVertical } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { GlobalShortcutSection } from "@/components/global-shortcut-section";
+import { APP_DISPLAY_NAME } from "@/lib/app-identity";
 import { getBarFillLayout, getTrayIconSizePx } from "@/lib/tray-bars-icon";
 import {
   AUTO_UPDATE_OPTIONS,
@@ -519,7 +520,7 @@ export function SettingsPage({
       <section>
         <h3 className="text-lg font-semibold mb-0">Start on Login</h3>
         <p className="text-sm text-muted-foreground mb-2">
-          PulseUsage starts when you sign in
+          {APP_DISPLAY_NAME} starts when you sign in
         </p>
         <label className="flex items-center gap-2 text-sm select-none text-foreground">
           <Checkbox

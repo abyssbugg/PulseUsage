@@ -29,6 +29,7 @@ function GaugeIcon({ className }: { className?: string }) {
 import { cn } from "@/lib/utils"
 import { getRelativeLuminance } from "@/lib/color"
 import { useDarkMode } from "@/hooks/use-dark-mode"
+import { ISSUES_URL } from "@/lib/app-identity"
 
 type ActiveView = "home" | "settings" | string
 
@@ -254,7 +255,7 @@ export function SideNav({
       <NavButton
         isActive={false}
         onClick={() => {
-          openUrl("https://github.com/abyssbugg/PulseUsage/issues").catch(console.error)
+          openUrl(ISSUES_URL).catch(console.error)
           invoke("hide_panel").catch(console.error)
         }}
         aria-label="Help"
