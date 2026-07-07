@@ -11,8 +11,8 @@ describe("application metadata", () => {
     const tauri = readJson("src-tauri/tauri.conf.json")
 
     expect(pkg.name).toBe("pulseusage")
-    expect(tauri.productName).toBe("PulseUsage")
+    expect(tauri.productName).toBe("PulseBar")
     expect(tauri.identifier).toBe("com.abyssbugg.pulseusage")
-    expect(tauri.app.windows[0].title).toBe("PulseUsage")
+    expect(tauri.app.windows[0].title).toBe("PulseBar")
   })
 })

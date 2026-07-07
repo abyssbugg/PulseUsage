@@ -25,7 +25,7 @@ vi.mock("@/hooks/use-changelog", () => ({
 describe("AboutDialog", () => {
   it("renders version and independent repository link", () => {
     render(<AboutDialog version="1.2.3" onClose={() => {}} />)
-    expect(screen.getByText("PulseUsage")).toBeInTheDocument()
+    expect(screen.getByText("PulseBar")).toBeInTheDocument()
     expect(screen.getByText("v1.2.3")).toBeInTheDocument()
     expect(screen.getByText("GitHub")).toBeInTheDocument()
     expect(screen.getByText("Independent build channel")).toBeInTheDocument()
@@ -55,7 +55,7 @@ describe("AboutDialog", () => {
     await userEvent.keyboard("{Escape}")
 
     expect(onClose).not.toHaveBeenCalled()
-    expect(screen.getByText("PulseUsage")).toBeInTheDocument()
+    expect(screen.getByText("PulseBar")).toBeInTheDocument()
   })
 
   it("does not close on other keys", async () => {
@@ -74,7 +74,7 @@ describe("AboutDialog", () => {
 
     // Clicking inside the dialog should not close.
     onClose.mockClear()
-    await userEvent.click(screen.getByText("PulseUsage"))
+    await userEvent.click(screen.getByText("PulseBar"))
     expect(onClose).not.toHaveBeenCalled()
   })
 
@@ -121,4 +121,3 @@ describe("AboutDialog", () => {
     }
   })
 })
-

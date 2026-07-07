@@ -17,9 +17,9 @@ import {
 } from "./app-identity"
 
 describe("app identity", () => {
-  it("centralizes current PulseUsage identity without changing visible behavior", () => {
-    expect(APP_DISPLAY_NAME).toBe("PulseUsage")
-    expect(MARKETING_NAME).toBe("PulseUsage")
+  it("centralizes PulseBar display identity while preserving repository identity", () => {
+    expect(APP_DISPLAY_NAME).toBe("PulseBar")
+    expect(MARKETING_NAME).toBe("PulseBar")
     expect(GITHUB_OWNER).toBe("abyssbugg")
     expect(GITHUB_REPO).toBe("PulseUsage")
     expect(GITHUB_REPOSITORY).toBe("abyssbugg/PulseUsage")
