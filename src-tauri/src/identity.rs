@@ -12,9 +12,9 @@
 
 use tauri::AppHandle;
 
-pub const PRODUCT_DISPLAY_NAME: &str = "PulseUsage";
+pub const PRODUCT_DISPLAY_NAME: &str = "PulseBar";
 pub const INTERNAL_PROJECT_NAME: &str = "pulseusage";
-pub const MARKETING_NAME: &str = "PulseUsage";
+pub const MARKETING_NAME: &str = "PulseBar";
 
 pub const GITHUB_OWNER: &str = "abyssbugg";
 pub const GITHUB_REPO: &str = "PulseUsage";
@@ -66,10 +66,10 @@ mod tests {
     }
 
     #[test]
-    fn repository_identity_urls_remain_pulseusage_for_program_a1() {
-        assert_eq!(PRODUCT_DISPLAY_NAME, "PulseUsage");
+    fn display_identity_is_pulsebar_while_repository_identity_remains_pulseusage() {
+        assert_eq!(PRODUCT_DISPLAY_NAME, "PulseBar");
         assert_eq!(INTERNAL_PROJECT_NAME, "pulseusage");
-        assert_eq!(MARKETING_NAME, "PulseUsage");
+        assert_eq!(MARKETING_NAME, "PulseBar");
         assert_eq!(GITHUB_OWNER, "abyssbugg");
         assert_eq!(GITHUB_REPO, "PulseUsage");
         assert_eq!(GITHUB_REPOSITORY, "abyssbugg/PulseUsage");

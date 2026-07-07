@@ -1,6 +1,6 @@
-export const APP_DISPLAY_NAME = "PulseUsage"
+export const APP_DISPLAY_NAME = "PulseBar"
 export const INTERNAL_PROJECT_NAME = "pulseusage"
-export const MARKETING_NAME = "PulseUsage"
+export const MARKETING_NAME = "PulseBar"
 
 export const GITHUB_OWNER = "abyssbugg"
 export const GITHUB_REPO = "PulseUsage"
