@@ -31,10 +31,10 @@ Each hardcoded value is classified by migration priority. Migration PRs proceed 
 
 | File | Line | Current | Replacement | Status |
 |---|---|---|---|---|
-| `src/components/changelog-dialog.tsx` | 86 | `text-[#58a6ff]` | `text-[var(--link)]` | ⬜ |
-| `src/components/changelog-dialog.tsx` | 244 | `text-[#58a6ff]` | `text-[var(--link)]` | ⬜ |
-| `src/components/changelog-dialog.tsx` | 260 | `text-[#58a6ff]` | `text-[var(--link)]` | ⬜ |
-| `src/components/changelog-dialog.tsx` | 274 | `text-[#58a6ff]` | `text-[var(--link)]` | ⬜ |
+| `src/components/changelog-dialog.tsx` | 86 | `text-[#58a6ff]` | `text-[var(--link)]` | ✅ |
+| `src/components/changelog-dialog.tsx` | 244 | `text-[#58a6ff]` | `text-[var(--link)]` | ✅ |
+| `src/components/changelog-dialog.tsx` | 260 | `text-[#58a6ff]` | `text-[var(--link)]` | ✅ |
+| `src/components/changelog-dialog.tsx` | 274 | `text-[#58a6ff]` | `text-[var(--link)]` | ✅ |
 
 ### `#353537` (progress dark bg)
 
@@ -42,7 +42,7 @@ Each hardcoded value is classified by migration priority. Migration PRs proceed 
 
 | File | Line | Current | Replacement | Status |
 |---|---|---|---|---|
-| `src/components/ui/progress.tsx` | 45 | `dark:bg-[#353537]` | `bg-[var(--progress-track)]` | ⬜ |
+| `src/components/ui/progress.tsx` | 45 | `dark:bg-[#353537]` | `bg-[var(--progress-track)]` | ✅ |
 
 ### `#ffffff` / `#000000` (side-nav contrast tests)
 
@@ -62,17 +62,17 @@ Each hardcoded value is classified by migration priority. Migration PRs proceed 
 
 | File | Line | Current | Replacement | Status |
 |---|---|---|---|---|
-| `src/components/about-dialog.tsx` | 105 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ⬜ |
-| `src/components/provider-diagnostics.tsx` | 111 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ⬜ |
-| `src/components/provider-diagnostics.tsx` | 132 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ⬜ |
-| `src/components/changelog-dialog.tsx` | 230 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ⬜ |
-| `src/components/changelog-dialog.tsx` | 244 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ⬜ |
-| `src/components/changelog-dialog.tsx` | 256 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ⬜ |
-| `src/components/usage-sparkline.tsx` | 69 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ⬜ |
-| `src/components/usage-sparkline.tsx` | 95 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ⬜ |
-| `src/components/usage-sparkline.tsx` | 99 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ⬜ |
-| `src/components/provider-card.tsx` | 79 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ⬜ |
-| `src/components/provider-card.tsx` | 399 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ⬜ |
+| `src/components/about-dialog.tsx` | 105 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ✅ |
+| `src/components/provider-diagnostics.tsx` | 111 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ✅ |
+| `src/components/provider-diagnostics.tsx` | 132 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ✅ |
+| `src/components/changelog-dialog.tsx` | 230 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ✅ |
+| `src/components/changelog-dialog.tsx` | 244 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ✅ |
+| `src/components/changelog-dialog.tsx` | 256 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ✅ |
+| `src/components/usage-sparkline.tsx` | 69 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ✅ |
+| `src/components/usage-sparkline.tsx` | 95 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ✅ |
+| `src/components/usage-sparkline.tsx` | 99 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ✅ |
+| `src/components/provider-card.tsx` | 79 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ✅ |
+| `src/components/provider-card.tsx` | 399 | `text-[10px]` | `text-[var(--font-size-2xs)]` | ✅ |
 
 ### `text-[11px]`
 
@@ -80,8 +80,8 @@ Each hardcoded value is classified by migration priority. Migration PRs proceed 
 
 | File | Line | Current | Replacement | Status |
 |---|---|---|---|---|
-| `src/components/provider-diagnostics.tsx` | 93 | `text-[11px]` | `text-[var(--font-size-xs)]` | ⬜ |
-| `src/components/provider-card.tsx` | 286 | `text-[11px]` | `text-[var(--font-size-xs)]` | ⬜ |
+| `src/components/provider-diagnostics.tsx` | 93 | `text-[11px]` | `text-[var(--font-size-xs)]` | ✅ |
+| `src/components/provider-card.tsx` | 286 | `text-[11px]` | `text-[var(--font-size-xs)]` | ✅ |
 
 ### `text-[13px]`
 
@@ -89,8 +89,8 @@ Each hardcoded value is classified by migration priority. Migration PRs proceed 
 
 | File | Line | Current | Replacement | Status |
 |---|---|---|---|---|
-| `src/components/changelog-dialog.tsx` | 160 | `text-[13px]` | `text-[var(--font-size-base)]` | ⬜ |
-| `src/components/changelog-dialog.tsx` | 168 | `text-[13px]` | `text-[var(--font-size-base)]` | ⬜ |
+| `src/components/changelog-dialog.tsx` | 160 | `text-[13px]` | `text-[var(--font-size-base)]` | ✅ |
+| `src/components/changelog-dialog.tsx` | 168 | `text-[13px]` | `text-[var(--font-size-base)]` | ✅ |
 
 ---
 
@@ -102,10 +102,10 @@ Each hardcoded value is classified by migration priority. Migration PRs proceed 
 
 | File | Line | Current | Replacement | Status |
 |---|---|---|---|---|
-| `src/components/skeleton-lines.tsx` | 8 | `h-[18px]` | `h-[var(--control-2xs)]` | ⬜ |
-| `src/components/skeleton-lines.tsx` | 39 | `h-[18px]` | `h-[var(--control-2xs)]` | ⬜ |
-| `src/components/usage-sparkline.tsx` | 48 | `h-[18px]` | `h-[var(--control-2xs)]` | ⬜ |
-| `src/components/provider-card.tsx` | 386 | `h-[18px]` | `h-[var(--control-2xs)]` | ⬜ |
+| `src/components/skeleton-lines.tsx` | 8 | `h-[18px]` | `h-[var(--control-2xs)]` | ✅ |
+| `src/components/skeleton-lines.tsx` | 39 | `h-[18px]` | `h-[var(--control-2xs)]` | ✅ |
+| `src/components/usage-sparkline.tsx` | 48 | `h-[18px]` | `h-[var(--control-2xs)]` | ✅ |
+| `src/components/provider-card.tsx` | 386 | `h-[18px]` | `h-[var(--control-2xs)]` | ✅ |
 | `src/components/skeleton-lines.test.tsx` | 31, 32 | `h-[18px]` | Test assertion | ✅ N/A |
 
 ### `h-[22px]`
@@ -114,8 +114,8 @@ Each hardcoded value is classified by migration priority. Migration PRs proceed 
 
 | File | Line | Current | Replacement | Status |
 |---|---|---|---|---|
-| `src/components/skeleton-lines.tsx` | 17 | `h-[22px]` | `h-[var(--control-xs)]` | ⬜ |
-| `src/components/provider-card.tsx` | 412 | `h-[22px]` | `h-[var(--control-xs)]` | ⬜ |
+| `src/components/skeleton-lines.tsx` | 17 | `h-[22px]` | `h-[var(--control-xs)]` | ✅ |
+| `src/components/provider-card.tsx` | 412 | `h-[22px]` | `h-[var(--control-xs)]` | ✅ |
 
 ### `h-5` (Tailwind default = 20px)
 
@@ -123,9 +123,9 @@ Each hardcoded value is classified by migration priority. Migration PRs proceed 
 
 | File | Line | Current | Replacement | Status |
 |---|---|---|---|---|
-| `src/components/about-dialog.tsx` | 105 | `h-5` | `h-[var(--control-2xs)]` | ⬜ |
-| `src/components/provider-diagnostics.tsx` | 111 | `h-5` | `h-[var(--control-2xs)]` | ⬜ |
-| `src/components/provider-diagnostics.tsx` | 132 | `h-5` | `h-[var(--control-2xs)]` | ⬜ |
+| `src/components/about-dialog.tsx` | 105 | `h-5` | `h-[var(--control-2xs)]` | ✅ |
+| `src/components/provider-diagnostics.tsx` | 111 | `h-5` | `h-[var(--control-2xs)]` | ✅ |
+| `src/components/provider-diagnostics.tsx` | 132 | `h-5` | `h-[var(--control-2xs)]` | ✅ |
 
 ---
 
@@ -137,8 +137,8 @@ Each hardcoded value is classified by migration priority. Migration PRs proceed 
 
 | File | Line | Current | Replacement | Status |
 |---|---|---|---|---|
-| `src/components/skeleton-lines.tsx` | 45 | `min-w-[2px]` | `min-w-[var(--space-half)]` | ⬜ |
-| `src/components/usage-sparkline.tsx` | 58 | `min-w-[2px]` | `min-w-[var(--space-half)]` | ⬜ |
+| `src/components/skeleton-lines.tsx` | 45 | `min-w-[2px]` | `min-w-[var(--space-half)]` | ✅ |
+| `src/components/usage-sparkline.tsx` | 58 | `min-w-[2px]` | `min-w-[var(--space-half)]` | ✅ |
 | `src/components/skeleton-lines.tsx` | 41 | `max-w-[150px]` | structural — keep or token | ⬜ |
 | `src/components/usage-sparkline.tsx` | 53 | `max-w-[150px]` | structural — keep or token | ⬜ |
 | `src/components/changelog-dialog.tsx` | 197 | `w-[92%]`, `h-[88%]` | structural — keep | ✅ N/A |
@@ -153,10 +153,10 @@ Each hardcoded value is classified by migration priority. Migration PRs proceed 
 
 | File | Line | Current | Replacement | Status |
 |---|---|---|---|---|
-| `src/components/about-dialog.tsx` | 88 | `shadow-xl` | `shadow-[var(--shadow-xl)]` | ⬜ |
-| `src/components/changelog-dialog.tsx` | 197 | `shadow-2xl` | `shadow-[var(--shadow-2xl)]` | ⬜ |
-| `src/components/app/app-shell.tsx` | 77 | `shadow-lg` | `shadow-[var(--shadow-lg)]` | ⬜ |
-| `src/components/ui/tooltip.tsx` | 55 | `shadow-md` | `shadow-[var(--shadow-md)]` | ⬜ |
+| `src/components/about-dialog.tsx` | 88 | `shadow-xl` | `shadow-[var(--shadow-xl)]` | ✅ |
+| `src/components/changelog-dialog.tsx` | 197 | `shadow-2xl` | `shadow-[var(--shadow-2xl)]` | ✅ |
+| `src/components/app/app-shell.tsx` | 77 | `shadow-lg` | `shadow-[var(--shadow-lg)]` | ✅ |
+| `src/components/ui/tooltip.tsx` | 55 | `shadow-md` | `shadow-[var(--shadow-md)]` | ✅ |
 
 ---
 
@@ -168,9 +168,9 @@ Each hardcoded value is classified by migration priority. Migration PRs proceed 
 
 | File | Line | Current | Replacement | Status |
 |---|---|---|---|---|
-| `src/components/about-dialog.tsx` | 88 | `duration-200` | `duration-[var(--duration-default)]` | ⬜ |
-| `src/components/changelog-dialog.tsx` | 197 | `duration-200` | `duration-[var(--duration-default)]` | ⬜ |
-| `src/components/app/app-shell.tsx` | 100 | `duration-200` | `duration-[var(--duration-default)]` | ⬜ |
+| `src/components/about-dialog.tsx` | 88 | `duration-200` | `duration-[var(--duration-default)]` | ✅ |
+| `src/components/changelog-dialog.tsx` | 197 | `duration-200` | `duration-[var(--duration-default)]` | ✅ |
+| `src/components/app/app-shell.tsx` | 100 | `duration-200` | `duration-[var(--duration-default)]` | ✅ |
 
 ---
 
@@ -178,19 +178,19 @@ Each hardcoded value is classified by migration priority. Migration PRs proceed 
 
 | Category | Total | Migrated | Remaining |
 |---|---|---|---|
-| Link color (`#58a6ff`) | 4 | 0 | 4 |
-| Progress dark bg (`#353537`) | 1 | 0 | 1 |
-| Font size `text-[10px]` | 11 | 0 | 11 |
-| Font size `text-[11px]` | 2 | 0 | 2 |
-| Font size `text-[13px]` | 2 | 0 | 2 |
-| Control height `h-[18px]` | 4 | 0 | 4 |
-| Control height `h-[22px]` | 2 | 0 | 2 |
-| Control height `h-5` | 3 | 0 | 3 |
-| Width `min-w-[2px]` | 2 | 0 | 2 |
+| Link color (`#58a6ff`) | 4 | 4 | 0 |
+| Progress dark bg (`#353537`) | 1 | 1 | 0 |
+| Font size `text-[10px]` | 11 | 11 | 0 |
+| Font size `text-[11px]` | 2 | 2 | 0 |
+| Font size `text-[13px]` | 2 | 2 | 0 |
+| Control height `h-[18px]` | 4 | 4 | 0 |
+| Control height `h-[22px]` | 2 | 2 | 0 |
+| Control height `h-5` | 3 | 3 | 0 |
+| Width `min-w-[2px]` | 2 | 2 | 0 |
 | Width `max-w-[150px]` | 2 | 0 | 2 |
-| Elevation | 4 | 0 | 4 |
-| Motion `duration-200` | 3 | 0 | 3 |
-| **Total** | **40** | **0** | **40** |
+| Elevation | 4 | 4 | 0 |
+| Motion `duration-200` | 3 | 3 | 0 |
+| **Total** | **40** | **38** | **2** |
 
 ## Migration Order (Future PRs)
 

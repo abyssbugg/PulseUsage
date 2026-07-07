@@ -90,7 +90,7 @@ export function ProviderDiagnosticsSection({ plugin }: ProviderDiagnosticsSectio
         />
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-1.5 text-[11px] text-muted-foreground">
+      <div className="mt-3 flex flex-wrap gap-1.5 text-[var(--font-size-xs)] text-muted-foreground">
         <span>HTTP attempted: {diagnostics.hostFacts.httpRequestsAttempted}</span>
         <span>HTTP 2xx: {diagnostics.hostFacts.http2xxResponsesSeen}</span>
         <span>Auth status: {diagnostics.hostFacts.authStatusResponsesSeen}</span>
@@ -108,7 +108,7 @@ export function ProviderDiagnosticsSection({ plugin }: ProviderDiagnosticsSectio
                 className="flex items-center justify-between gap-2 text-xs text-muted-foreground"
               >
                 <span className="min-w-0 truncate">{metric.label}</span>
-                <Badge variant="outline" className="h-5 text-[10px]">
+                <Badge variant="outline" className="h-[var(--control-2xs)] text-[var(--font-size-2xs)]">
                   {metric.classification}
                 </Badge>
               </li>
@@ -129,7 +129,7 @@ export function ProviderDiagnosticsSection({ plugin }: ProviderDiagnosticsSectio
       {diagnostics.likelyCauses.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1">
           {diagnostics.likelyCauses.map((cause) => (
-            <Badge key={cause} variant="outline" className="h-5 text-[10px]">
+            <Badge key={cause} variant="outline" className="h-[var(--control-2xs)] text-[var(--font-size-2xs)]">
               {CAUSE_LABELS[cause]}
             </Badge>
           ))}

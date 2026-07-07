@@ -85,7 +85,7 @@ export function AboutDialog({ version, onClose }: AboutDialogProps) {
       className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm rounded-xl"
       onClick={handleBackdropClick}
     >
-      <div className="bg-card rounded-lg border shadow-xl p-6 max-w-xs w-full mx-4 text-center animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-card rounded-lg border shadow-[var(--shadow-xl)] p-6 max-w-xs w-full mx-4 text-center animate-in fade-in zoom-in-95 duration-[var(--duration-default)]">
         <img
           src="/icon.png"
           alt={APP_DISPLAY_NAME}
@@ -102,7 +102,7 @@ export function AboutDialog({ version, onClose }: AboutDialogProps) {
             size="xs"
             variant="outline"
             onClick={() => setView("changelog")}
-            className="text-[10px] h-5 px-1.5"
+            className="text-[var(--font-size-2xs)] h-[var(--control-2xs)] px-1.5"
           >
             View Changelog
           </Button>

@@ -83,7 +83,7 @@ function SimpleMarkdown({ content }: { content: string }) {
       parts = newParts;
     });
 
-    const linkClass = "text-[#58a6ff] hover:underline hover:text-[#58a6ff]/80 transition-colors cursor-pointer";
+    const linkClass = "text-[var(--link)] hover:underline hover:text-[var(--link-hover)] transition-colors cursor-pointer";
 
     return parts.map((part, i) => {
       if (part.type === "link") {
@@ -157,7 +157,7 @@ function SimpleMarkdown({ content }: { content: string }) {
         if (trimmed.startsWith("-") || trimmed.startsWith("*")) {
           if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
             return (
-              <div key={i} className="flex gap-2 pl-1 text-[13px] leading-relaxed">
+              <div key={i} className="flex gap-2 pl-1 text-[var(--font-size-base)] leading-relaxed">
                 <span className="text-muted-foreground/60 mt-1.5 shrink-0 scale-75">•</span>
                 <span className="flex-1 text-foreground/90">{renderText(trimmed.replace(/^[-*]\s*/, ""))}</span>
               </div>
@@ -165,7 +165,7 @@ function SimpleMarkdown({ content }: { content: string }) {
           }
         }
         if (!trimmed) return <div key={i} className="h-1" />
-        return <p key={i} className="text-[13px] text-foreground/90 leading-relaxed">{renderText(line)}</p>
+        return <p key={i} className="text-[var(--font-size-base)] text-foreground/90 leading-relaxed">{renderText(line)}</p>
       })}
     </div>
   )
@@ -194,7 +194,7 @@ export function ChangelogDialog({ currentVersion, onBack, onClose }: ChangelogDi
 
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] rounded-xl">
-      <div className="bg-card rounded-lg border shadow-2xl flex flex-col w-[92%] h-[88%] animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-card rounded-lg border shadow-[var(--shadow-2xl)] flex flex-col w-[92%] h-[88%] animate-in fade-in zoom-in-95 duration-[var(--duration-default)]">
         <div className="flex items-center justify-between p-3.5 border-b bg-muted/20">
           <div className="flex items-center gap-2">
             <button
@@ -202,7 +202,7 @@ export function ChangelogDialog({ currentVersion, onBack, onClose }: ChangelogDi
               className="p-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:text-foreground"
               title="Back"
             >
-              <ChevronRight className="w-5 h-5 rotate-180" />
+              <ChevronRight className="size-[var(--icon-lg)] rotate-180" />
             </button>
             <h2 className="font-semibold text-sm tracking-tight">Release Notes</h2>
           </div>
@@ -211,7 +211,7 @@ export function ChangelogDialog({ currentVersion, onBack, onClose }: ChangelogDi
         <div className="flex-1 overflow-y-auto p-5 custom-scrollbar overflow-x-hidden">
           {loading ? (
             <div className="h-full flex flex-col items-center justify-center text-muted-foreground gap-2">
-              <Loader2 className="w-6 h-6 animate-spin" />
+              <Loader2 className="size-[var(--icon-xl)] animate-spin" />
               <span className="text-xs">Fetching release info...</span>
             </div>
           ) : error ? (
@@ -223,11 +223,11 @@ export function ChangelogDialog({ currentVersion, onBack, onClose }: ChangelogDi
               </Button>
             </div>
           ) : currentRelease ? (
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-[var(--duration-slow)]">
               <div className="flex items-baseline justify-between mb-4 border-b pb-4">
                 <div>
                   <h3 className="font-bold text-lg">{currentRelease.name || currentRelease.tag_name}</h3>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                  <p className="text-[var(--font-size-2xs)] text-muted-foreground mt-0.5">
                     {currentRelease.published_at
                       ? (() => {
                           const d = new Date(currentRelease.published_at)
@@ -241,9 +241,9 @@ export function ChangelogDialog({ currentVersion, onBack, onClose }: ChangelogDi
                 </div>
                 <button
                   onClick={() => openUrl(currentRelease.html_url).catch(console.error)}
-                  className="text-[10px] text-[#58a6ff] hover:underline flex items-center gap-1"
+                  className="text-[var(--font-size-2xs)] text-[var(--link)] hover:underline flex items-center gap-1"
                 >
-                  GitHub <ExternalLinkIcon className="w-3 h-3" />
+                  GitHub <ExternalLinkIcon className="size-[var(--icon-xs)]" />
                 </button>
               </div>
               
@@ -253,11 +253,11 @@ export function ChangelogDialog({ currentVersion, onBack, onClose }: ChangelogDi
 
               {releases.length >= 1 && (
                 <div className="mt-8 pt-6 border-t border-dashed">
-                  <p className="text-[10px] text-muted-foreground text-center">
+                  <p className="text-[var(--font-size-2xs)] text-muted-foreground text-center">
                     Looking for older versions? Check the{" "}
                     <button 
                       onClick={() => openUrl(RELEASES_URL).catch(console.error)}
-                      className="text-[#58a6ff] hover:underline"
+                      className="text-[var(--link)] hover:underline"
                     >
                       full changelog
                     </button>
@@ -271,7 +271,7 @@ export function ChangelogDialog({ currentVersion, onBack, onClose }: ChangelogDi
               <span className="text-xs mb-4">This version might be a pre-release or local build.</span>
               <button 
                 onClick={() => openUrl(RELEASES_URL).catch(console.error)}
-                className="text-xs text-[#58a6ff] hover:underline"
+                className="text-xs text-[var(--link)] hover:underline"
               >
                 View all releases on GitHub
               </button>

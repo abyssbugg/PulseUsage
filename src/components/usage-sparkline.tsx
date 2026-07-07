@@ -45,7 +45,7 @@ export function UsageSparkline({ label, points, note, color }: UsageSparklinePro
             {...props}
             type="button"
             aria-label={summary}
-            className="flex h-[18px] w-full items-center justify-between gap-2 rounded-sm border-0 bg-transparent p-0 text-left outline-none [touch-action:manipulation] focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex h-[var(--control-2xs)] w-full items-center justify-between gap-2 rounded-sm border-0 bg-transparent p-0 text-left outline-none [touch-action:manipulation] focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span className="min-w-0 truncate text-xs text-muted-foreground">{label}</span>
             <span
@@ -55,7 +55,7 @@ export function UsageSparkline({ label, points, note, color }: UsageSparklinePro
               {valid.map((point, index) => (
                 <span
                   key={`${point.label}-${index}`}
-                  className="min-w-[2px] flex-1 rounded-[1px] bg-primary"
+                  className="min-w-[var(--space-half)] flex-1 rounded-[1px] bg-primary"
                   style={barStyle(point, 10)}
                 />
               ))}
@@ -66,7 +66,7 @@ export function UsageSparkline({ label, points, note, color }: UsageSparklinePro
       <TooltipContent side="top" className="w-56" onMouseLeave={() => setActiveIndex(null)}>
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-xs font-medium">{label}</span>
-          <span className="text-[10px] tabular-nums text-muted-foreground">{readout}</span>
+          <span className="text-[var(--font-size-2xs)] tabular-nums text-muted-foreground">{readout}</span>
         </div>
         <div className="mt-1.5 flex h-20 items-end gap-px">
           {valid.map((point, index) => (
@@ -92,11 +92,11 @@ export function UsageSparkline({ label, points, note, color }: UsageSparklinePro
             </button>
           ))}
         </div>
-        <div className="mt-1 flex justify-between text-[10px] tabular-nums text-muted-foreground">
+        <div className="mt-1 flex justify-between text-[var(--font-size-2xs)] tabular-nums text-muted-foreground">
           <span>{valid[0].label}</span>
           <span>{last.label}</span>
         </div>
-        {note && <div className="mt-1 text-[10px] text-muted-foreground">{note}</div>}
+        {note && <div className="mt-1 text-[var(--font-size-2xs)] text-muted-foreground">{note}</div>}
       </TooltipContent>
     </Tooltip>
   )
