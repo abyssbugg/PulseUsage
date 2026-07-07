@@ -69,4 +69,8 @@ Before registering, check `TECHNICAL_DEBT.md` (including its Resolved and P5-int
 - Audits never approve. They find or they pass; approval is the merge process's job.
 - No busywork: a refactoring recommendation without measurable benefit is discarded at synthesis.
 - An audit that finds nothing writes a one-line run record saying so. Empty results are results.
+
+## Framework health
+
+Governance must earn its keep: every artifact here exists to manage a specific decision or risk, and gets simplified or removed when it stops doing so. To make that measurable, every run record tallies four numbers: findings confirmed, findings refuted (false-positive rate), findings that duplicated register entries (dedup failures), and findings resolved from previous runs. After any three consecutive runs of a charter, review the tallies — a charter that keeps producing refuted or duplicate findings gets its scope or trigger adjusted; one that produces nothing actionable gets its trigger loosened or the charter retired. Adjustments to this framework happen only in response to those tallies or a demonstrated gap, never speculatively.
 - **Governance documents are production code.** Any change to this process, a charter, [Invariants.md](../Invariants.md), [RiskRegister.md](../pulsebar/RiskRegister.md), or [DefinitionOfDone.md](../pulsebar/DefinitionOfDone.md) gets independent review and evidence validation before merge — every factual claim (paths, identifiers, invariant values) re-verified against the working tree, not trusted from a draft. The registry's own INV-001 typo history is the standing reminder of why.
