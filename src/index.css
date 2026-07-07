@@ -319,6 +319,9 @@
   --surface-elevated: var(--card);
   --surface-overlay: var(--popover);
   --surface-sunken: var(--muted);
+
+  /* ---- Component semantic surfaces ---- */
+  --progress-track: var(--muted);
 }
 
 :root.dark {
@@ -329,6 +332,7 @@
   --warning-foreground: oklch(0.985 0.002 247.839);
   --error-foreground: oklch(0.985 0.002 247.839);
   --info-foreground: oklch(0.985 0.002 247.839);
+  --progress-track: #353537;
 }
 
 @layer base {

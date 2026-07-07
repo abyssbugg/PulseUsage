@@ -31,6 +31,7 @@ All tokens are CSS custom properties defined in `src/index.css`:
 | `--success/warning/error/info` | Semantic status colors | `--success` |
 | `--link` | Link color | `--link` (#58a6ff) |
 | `--surface-*` | Semantic surfaces | `--surface-elevated` |
+| `--progress-track` | Component semantic surface | Progress track background |
 
 ## Token Inventory
 
@@ -84,6 +85,9 @@ Each has a `-foreground` companion.
 
 ### Semantic Surfaces
 `--surface-elevated` → `--card` · `--surface-overlay` → `--popover` · `--surface-sunken` → `--muted`
+
+### Component Semantic Surfaces
+`--progress-track` → `--muted` in light mode, `#353537` in dark mode.
 
 ## When to Introduce New Tokens
 

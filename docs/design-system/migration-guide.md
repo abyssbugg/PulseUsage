@@ -38,11 +38,11 @@ Each hardcoded value is classified by migration priority. Migration PRs proceed 
 
 ### `#353537` (progress dark bg)
 
-**Token:** needs alias (currently `dark:bg-[#353537]` — add `--surface-sunken-dark` or reuse `--muted`)
+**Token:** `--progress-track`
 
 | File | Line | Current | Replacement | Status |
 |---|---|---|---|---|
-| `src/components/ui/progress.tsx` | 45 | `dark:bg-[#353537]` | `dark:bg-[var(--surface-sunken)]` or new token | ⬜ |
+| `src/components/ui/progress.tsx` | 45 | `dark:bg-[#353537]` | `bg-[var(--progress-track)]` | ⬜ |
 
 ### `#ffffff` / `#000000` (side-nav contrast tests)
 
