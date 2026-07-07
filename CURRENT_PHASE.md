@@ -1,36 +1,36 @@
 # Current Phase
 
 > **Canonical current-phase document.** The exact milestone and immediate next steps.
-> Last updated: 2026-07-06
+> Last updated: 2026-07-07
 
 ## Current Milestone
 
-**PulseBar v0.8.0 — Program A: Product Identity**
+**PulseBar v0.8.0 — Programs A and B in flight**
 
-Core Platform Modernization is complete. v0.7.0-rc.1 has been published, `release/v0.7.0` is frozen except for verified RC fixes, and the PulseBar Governance Lock has merged. The project is now ready to begin Program A after this baseline update is approved.
+Core Platform Modernization is complete. v0.7.0-rc.1 is published and `release/v0.7.0` is frozen except for verified RC fixes. Program A (Product Identity) has merged its first two PRs; Program B (Professional UI/UX) has merged its design-system foundation. The Engineering Governance & Audit Framework is in review.
 
-## Active Program
+## Active Programs
 
 | Field | Value |
 |---|---|
 | Product phase | PulseBar v0.8.0 |
-| Active program | Program A |
-| Program name | Product Identity |
 | GitHub milestone | v0.8.0 |
-| Required branch | `feat/pulsebar-identity-foundation` |
+| Program A — Product Identity | In progress: A1 ✅ (PR #54), A2 ✅ (PR #55); A3–A5 remaining |
+| Program B — Professional UI/UX | In progress: design-system foundation ✅ (PR #56, ADR-002); B1 next |
+| Branch strategy | One workstream per branch/worktree, per [PRSequencing](docs/governance/pulsebar/PRSequencing.md) |
 | Protected branches | `main`, `release/v0.7.0` |
 | Release branch policy | `release/v0.7.0` accepts verified RC bug fixes only |
 
 ## What Is Happening Now
 
-1. ✅ **v0.7.0-rc.1 published** — tag and GitHub prerelease exist with validated DMG artifact.
-2. ✅ **Core Platform Modernization complete** — Program 1, Program 2, and Program 2.5 are merged.
-3. ✅ **PulseBar Governance Lock merged** — PR #52 added the Program Charter, Product Decision Record, dependency diagram, PR sequencing, risk register, and Definitions of Done.
-4. ✅ **v0.8.0 milestone created** — GitHub milestone #1 tracks the PulseBar product program.
-5. 🔄 **v0.8.0 baseline update** — this docs-only update aligns the control-center docs with the new phase.
-6. ⬜ **Program A PR-A1** — Product Identity foundation, to begin only after this baseline report is approved.
+1. ✅ **Program A identity foundation merged** — PR #54 added the `identity.rs` / `app-identity.ts` identity layers (A1).
+2. ✅ **Program A identity rollout merged** — PR #55 moved user-visible surfaces to the PulseBar display identity (A2).
+3. ✅ **Program B design-system foundation merged** — PR #56 established design tokens, [ADR-002](docs/adr/002-design-system.md), and the component contract.
+4. 🔄 **Governance & Audit Framework in review** — PR #57 adds the invariant registry, audit process, and five audit charters under `docs/governance/`.
+5. ⬜ **Program B PR-B1** — accessibility baseline (focus visibility, keyboard paths) per PRSequencing.
+6. ⬜ **Program A A3–A5** — artifact naming validation, docs/release notes, screenshots and visual assets.
 
-## Locked Decisions for Program A
+## Locked Decisions
 
 | Decision | Locked Position |
 |---|---|
@@ -46,26 +46,17 @@ Core Platform Modernization is complete. v0.7.0-rc.1 has been published, `releas
 
 ## Immediate Next Steps
 
-### Step 1 — Baseline approval
-Review this baseline update and confirm the repository is aligned for PulseBar v0.8.0 Program A.
+### Step 1 — Merge the governance framework
+Review and merge PR #57. Governance docs follow the same review rigor as code (see `docs/governance/audits/AuditProcess.md` hard rules once merged).
 
-### Step 2 — Start Program A PR-A1
-Create a separate worktree/branch:
+### Step 2 — Program B PR-B1
+Create a dedicated branch for the accessibility baseline. Scope per [PRSequencing](docs/governance/pulsebar/PRSequencing.md): restore focus visibility and keyboard paths. Program B Definition of Done applies (screenshots, keyboard/focus verification, state checks).
 
-```text
-feat/pulsebar-identity-foundation
-```
+### Step 3 — First audit pilot
+After the next significant Program B milestone, run the first Security Charter (SEC) audit against the plugin engine as a pilot, and use its run record to validate the framework itself before scheduling broader audits.
 
-PR-A1 scope is identity foundation only. No UI redesign, no Ollama, no statistics engine, no bundle identifier change, no repository rename.
-
-### Step 3 — Program A sequencing
-Follow `docs/governance/pulsebar/PRSequencing.md`:
-
-1. A1 Identity foundation
-2. A2 User-facing string rename
-3. A3 Artifact naming validation
-4. A4 Docs and release notes update
-5. A5 Screenshots and visual assets
+### Step 4 — Program A completion
+A3 (artifact naming validation), A4 (docs and release notes), A5 (screenshots and visual assets), each as its own PR.
 
 ## What Is NOT Happening
 
@@ -77,22 +68,3 @@ Follow `docs/governance/pulsebar/PRSequencing.md`:
 - ❌ No UI redesign rewrite.
 - ❌ No Ollama implementation until its workstream is explicitly started.
 - ❌ No statistics engine until its workstream is explicitly started.
-
-## Authorization Model
-
-- **Main Engineering Agent**: sole agent authorized to commit, push, merge, release, or modify the repository.
-- **All other sessions**: research-only. May audit, research, plan, or benchmark. Must not commit, push, merge, rename, release, or modify.
-
-## Completion Criteria for This Phase
-
-This baseline phase is complete when:
-
-- [x] PR #52 Governance Lock merged.
-- [x] GitHub milestone `v0.8.0` exists.
-- [x] `CURRENT_PHASE.md` reflects PulseBar v0.8.0 Program A.
-- [x] `PROJECT_STATUS.md` reflects v0.7.0-rc.1 publication and Program A readiness.
-- [x] Branch strategy verified.
-- [x] Stale feature branches identified.
-- [ ] Baseline report approved.
-
-After approval, begin **Program A PR-A1: Product Identity foundation**.
