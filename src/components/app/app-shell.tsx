@@ -74,7 +74,7 @@ export function AppShell({
     >
       <div className="tray-arrow" />
       <div
-        className="relative bg-card rounded-xl overflow-hidden select-none w-full border shadow-lg flex flex-col"
+        className="relative bg-card rounded-xl overflow-hidden select-none w-full border shadow-[var(--shadow-lg)] flex flex-col"
         style={maxPanelHeightPx ? { maxHeight: `${maxPanelHeightPx - ARROW_OVERHEAD_PX}px` } : undefined}
       >
         <div className="flex flex-1 min-h-0 flex-row">
@@ -97,7 +97,7 @@ export function AppShell({
                 />
               </div>
               <div
-                className={`pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-card dark:from-muted/50 to-transparent transition-opacity duration-200 ${canScrollDown ? "opacity-100" : "opacity-0"}`}
+                className={`pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-card dark:from-muted/50 to-transparent transition-opacity duration-[var(--duration-default)] ${canScrollDown ? "opacity-100" : "opacity-0"}`}
               />
             </div>
             <PanelFooter

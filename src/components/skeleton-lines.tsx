@@ -5,7 +5,7 @@ import { groupLinesByType } from "@/lib/group-lines-by-type"
 
 function SkeletonText({ label }: { label: string }) {
   return (
-    <div className="flex justify-between items-center h-[18px]">
+    <div className="flex justify-between items-center h-[var(--control-2xs)]">
       <span className="text-xs text-muted-foreground">{label}</span>
       <Skeleton className="h-3 w-16" />
     </div>
@@ -14,9 +14,9 @@ function SkeletonText({ label }: { label: string }) {
 
 function SkeletonBadge({ label }: { label: string }) {
   return (
-    <div className="flex justify-between items-center h-[22px]">
+    <div className="flex justify-between items-center h-[var(--control-xs)]">
       <span className="text-sm text-muted-foreground">{label}</span>
-      <Skeleton className="h-5 w-16 rounded-md" />
+      <Skeleton className="h-[var(--control-2xs)] w-16 rounded-md" />
     </div>
   )
 }
@@ -36,13 +36,13 @@ function SkeletonProgress({ label }: { label: string }) {
 
 function SkeletonBarChart({ label }: { label: string }) {
   return (
-    <div className="flex h-[18px] items-center justify-between gap-2">
+    <div className="flex h-[var(--control-2xs)] items-center justify-between gap-2">
       <span className="text-xs text-muted-foreground min-w-0 truncate">{label}</span>
       <div className="flex h-4 w-1/2 max-w-[150px] flex-shrink-0 items-end justify-end gap-px">
         {Array.from({ length: 16 }).map((_, index) => (
           <Skeleton
             key={index}
-            className="min-w-[2px] flex-1 rounded-[1px]"
+            className="min-w-[var(--space-half)] flex-1 rounded-[1px]"
             style={{ height: `${30 + ((index * 17) % 60)}%` }}
           />
         ))}

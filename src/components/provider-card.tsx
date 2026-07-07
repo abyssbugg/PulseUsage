@@ -76,7 +76,7 @@ function PaceIndicator({
         ) : (
           <>
             <div>{statusText}</div>
-            {detailText && <div className="text-[10px] opacity-60">{detailText}</div>}
+            {detailText && <div className="text-[var(--font-size-2xs)] opacity-60">{detailText}</div>}
           </>
         )}
       </TooltipContent>
@@ -212,7 +212,7 @@ export function ProviderCard({
                   style={{ transform: "translateZ(0)", backfaceVisibility: "hidden" }}
                   tabIndex={-1}
                 >
-                  <RefreshCw className="h-3 w-3 animate-spin" />
+                  <RefreshCw className="size-[var(--icon-xs)] animate-spin" />
                 </Button>
               ) : inCooldown ? (
                 <Tooltip>
@@ -227,7 +227,7 @@ export function ProviderCard({
                           style={{ transform: "translateZ(0)", backfaceVisibility: "hidden" }}
                           tabIndex={-1}
                         >
-                          <Hourglass className="h-3 w-3" />
+                          <Hourglass className="size-[var(--icon-xs)]" />
                         </Button>
                       </span>
                     )}
@@ -253,7 +253,7 @@ export function ProviderCard({
                         className="opacity-0 hover:opacity-100 focus-visible:opacity-100"
                         style={{ transform: "translateZ(0)", backfaceVisibility: "hidden" }}
                       >
-                        <RefreshCw className="h-3 w-3" />
+                        <RefreshCw className="size-[var(--icon-xs)]" />
                       </Button>
                     )}
                   />
@@ -283,13 +283,13 @@ export function ProviderCard({
                 key={`${link.label}-${link.url}`}
                 variant="outline"
                 size="xs"
-                className="h-6 max-w-full text-[11px]"
+                className="h-6 max-w-full text-[var(--font-size-xs)]"
                 onClick={() => {
                   openUrl(link.url).catch(console.error)
                 }}
               >
                 <span className="truncate">{link.label}</span>
-                <ExternalLink className="size-3 opacity-70" />
+                <ExternalLink className="size-[var(--icon-xs)] opacity-70" />
               </Button>
             ))}
           </div>
@@ -304,7 +304,7 @@ export function ProviderCard({
                   {...props}
                   className="flex items-center gap-1.5 mb-2 text-xs text-destructive"
                 >
-                  <AlertCircle className="h-3 w-3 flex-shrink-0" />
+                  <AlertCircle className="size-[var(--icon-xs)] flex-shrink-0" />
                   <span className="truncate">{safeError}</span>
                 </div>
               )}
@@ -383,7 +383,7 @@ function MetricLineRenderer({
   if (line.type === "text") {
     return (
       <div>
-        <div className="flex justify-between items-center h-[18px] gap-2">
+        <div className="flex justify-between items-center h-[var(--control-2xs)] gap-2">
           <span className="text-xs text-muted-foreground min-w-0 truncate" title={line.label}>
             {line.label}
           </span>
@@ -396,7 +396,7 @@ function MetricLineRenderer({
           </span>
         </div>
         {line.subtitle && (
-          <div className="text-[10px] text-muted-foreground text-right -mt-0.5">{line.subtitle}</div>
+          <div className="text-[var(--font-size-2xs)] text-muted-foreground text-right -mt-0.5">{line.subtitle}</div>
         )}
       </div>
     )
@@ -409,7 +409,7 @@ function MetricLineRenderer({
       : line.subtitle
     return (
       <div>
-        <div className="flex justify-between items-center h-[22px]">
+        <div className="flex justify-between items-center h-[var(--control-xs)]">
           <span className="text-sm text-muted-foreground flex-shrink-0">{line.label}</span>
           <Badge
             variant="outline"

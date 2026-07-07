@@ -28,8 +28,8 @@ describe("SkeletonLines", () => {
 
     expect(usedLabel).toHaveClass("text-xs")
     expect(leftLabel).toHaveClass("text-xs")
-    expect(usedLabel.parentElement).toHaveClass("h-[18px]")
-    expect(leftLabel.parentElement).toHaveClass("h-[18px]")
+    expect(usedLabel.parentElement).toHaveClass("h-[var(--control-2xs)]")
+    expect(leftLabel.parentElement).toHaveClass("h-[var(--control-2xs)]")
 
     const textGroup = usedLabel.closest(".space-y-1")
     expect(textGroup).toBeInTheDocument()
