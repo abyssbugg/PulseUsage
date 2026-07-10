@@ -433,7 +433,7 @@ pub fn run() {
                     Target::new(TargetKind::LogDir { file_name: None }),
                 ])
                 .max_file_size(10_000_000) // 10 MB
-                .level(log::LevelFilter::Trace) // Allow all levels; runtime filter via tray menu
+                .level(log::LevelFilter::Info) // Default to Info; runtime filter via tray menu can raise to Trace for debugging
                 .level_for("hyper", log::LevelFilter::Warn)
                 .level_for("reqwest", log::LevelFilter::Warn)
                 .level_for("tao", log::LevelFilter::Info)
