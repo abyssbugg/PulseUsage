@@ -155,7 +155,9 @@ fn route(method: &str, path: &str) -> String {
 
 fn handle_get_usage_collection() -> String {
     let snapshots = {
-        let state = cache_state().lock().expect("cache state poisoned");
+        let state = cache_state()
+            .lock()
+            .unwrap_or_else(|err| err.into_inner());
         enabled_snapshots_ordered(&state)
     };
     let body = serde_json::to_string(&snapshots).unwrap_or_else(|_| "[]".to_string());
@@ -163,7 +165,9 @@ fn handle_get_usage_collection() -> String {
 }
 
 fn handle_get_usage_single(provider_id: &str) -> String {
-    let state = cache_state().lock().expect("cache state poisoned");
+    let state = cache_state()
+        .lock()
+        .unwrap_or_else(|err| err.into_inner());
 
     // Check if provider is known at all
     let is_known = state.known_plugin_ids.iter().any(|id| id == provider_id);
