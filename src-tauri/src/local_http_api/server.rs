@@ -184,27 +184,18 @@ fn handle_get_usage_single(provider_id: &str) -> String {
 // HTTP response builders
 // ---------------------------------------------------------------------------
 
-const CORS_HEADERS: &str = "\
-Access-Control-Allow-Origin: *\r\n\
-Access-Control-Allow-Methods: GET, OPTIONS\r\n\
-Access-Control-Allow-Headers: Content-Type";
-
 fn response_json(status: u16, reason: &str, body: &str) -> String {
     format!(
-        "HTTP/1.1 {} {}\r\nConnection: close\r\nContent-Type: application/json; charset=utf-8\r\n{}\r\nContent-Length: {}\r\n\r\n{}",
+        "HTTP/1.1 {} {}\r\nConnection: close\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: {}\r\n\r\n{}",
         status,
         reason,
-        CORS_HEADERS,
         body.len(),
         body,
     )
 }
 
 fn response_no_content() -> String {
-    format!(
-        "HTTP/1.1 204 No Content\r\nConnection: close\r\n{}\r\n\r\n",
-        CORS_HEADERS,
-    )
+    "HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n".to_string()
 }
 
 fn response_not_found(error_code: &str) -> String {
@@ -260,7 +251,6 @@ mod tests {
     fn route_options_returns_204_with_cors() {
         let resp = route("OPTIONS", "/v1/usage");
         assert!(resp.starts_with("HTTP/1.1 204"));
-        assert!(resp.contains("Access-Control-Allow-Origin: *"));
     }
 
     #[test]
@@ -310,13 +300,12 @@ mod tests {
     fn route_options_on_provider_returns_204() {
         let resp = route("OPTIONS", "/v1/usage/claude");
         assert!(resp.starts_with("HTTP/1.1 204"));
-        assert!(resp.contains("Access-Control-Allow-Methods: GET, OPTIONS"));
     }
 
     #[test]
-    fn response_json_includes_cors_headers() {
+    fn response_json_does_not_include_cors_headers() {
         let resp = response_json(200, "OK", "[]");
-        assert!(resp.contains("Access-Control-Allow-Origin: *"));
+        assert!(!resp.contains("Access-Control-Allow-Origin"));
         assert!(resp.contains("Content-Type: application/json; charset=utf-8"));
     }
 
@@ -345,6 +334,6 @@ mod tests {
 
         assert!(resp.starts_with("HTTP/1.1 503"));
         assert!(resp.contains(r#""error":"server_busy""#));
-        assert!(resp.contains("Access-Control-Allow-Origin: *"));
+        assert!(!resp.contains("Access-Control-Allow-Origin"));
     }
 }
