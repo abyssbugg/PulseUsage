@@ -131,7 +131,7 @@ describe("PanelFooter", () => {
       />
     )
 
-    const retryButton = screen.getByRole("button", { name: "Updates soon" })
+    const retryButton = screen.getByRole("button", { name: /Updates soon/ })
     expect(retryButton).toBeTruthy()
     await userEvent.click(retryButton)
     expect(onUpdateCheck).toHaveBeenCalledTimes(1)

@@ -84,6 +84,9 @@ export function AboutDialog({ version, onClose }: AboutDialogProps) {
     <div
       className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm rounded-xl"
       onClick={handleBackdropClick}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${APP_DISPLAY_NAME} About dialog`}
     >
       <div className="bg-card rounded-lg border shadow-[var(--shadow-xl)] p-6 max-w-xs w-full mx-4 text-center animate-in fade-in zoom-in-95 duration-[var(--duration-default)]">
         <img

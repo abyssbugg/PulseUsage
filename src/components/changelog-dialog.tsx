@@ -193,7 +193,7 @@ export function ChangelogDialog({ currentVersion, onBack, onClose }: ChangelogDi
   )
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] rounded-xl">
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px] rounded-xl" role="dialog" aria-modal="true" aria-label="Release Notes">
       <div className="bg-card rounded-lg border shadow-[var(--shadow-2xl)] flex flex-col w-[92%] h-[88%] animate-in fade-in zoom-in-95 duration-[var(--duration-default)]">
         <div className="flex items-center justify-between p-3.5 border-b bg-muted/20">
           <div className="flex items-center gap-2">
@@ -201,6 +201,7 @@ export function ChangelogDialog({ currentVersion, onBack, onClose }: ChangelogDi
               onClick={onBack}
               className="p-1.5 hover:bg-muted rounded-md transition-[var(--transition-colors)] text-muted-foreground hover:text-foreground"
               title="Back"
+              aria-label="Back to About"
             >
               <ChevronRight className="size-[var(--icon-lg)] rotate-180" />
             </button>

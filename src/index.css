@@ -433,14 +433,22 @@ body,
   .animate-shimmer {
     animation: none;
   }
+  .animate-spin {
+    animation: none;
+  }
+  .animate-in,
+  .animate-out {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
 
-/* Remove focus rings - this is a menu bar app, not keyboard-navigated */
-*:focus,
-*:focus-visible {
-  outline: none !important;
-  box-shadow: none !important;
-  --tw-ring-shadow: 0 0 #0000 !important;
-  --tw-ring-offset-shadow: 0 0 #0000 !important;
-  border-color: transparent !important;
-}
+/* Focus visibility (B5 Accessibility)
+   ---------------------------------------------------------------------------
+   WCAG 2.1 SC 2.4.7 requires visible focus indicators. The previous
+   global suppression (`*:focus { outline: none !important }`) violated
+   this. Focus indicators are now controlled per-component via
+   `focus-visible:ring-*` Tailwind utilities and the `--focus-ring-*`
+   design tokens. This block is intentionally empty — the per-component
+   focus styles handle visibility. */
