@@ -18,7 +18,7 @@ const LOG_LEVEL_STORE_KEY: &str = "logLevel";
 fn get_stored_log_level(app_handle: &AppHandle) -> log::LevelFilter {
     let store = match app_handle.store("settings.json") {
         Ok(s) => s,
-        Err(_) => return log::LevelFilter::Error,
+        Err(_) => return log::LevelFilter::Info,
     };
     let value = store.get(LOG_LEVEL_STORE_KEY);
     let level_str = value.and_then(|v| v.as_str().map(|s| s.to_string()));
@@ -28,7 +28,7 @@ fn get_stored_log_level(app_handle: &AppHandle) -> log::LevelFilter {
         Some("info") => log::LevelFilter::Info,
         Some("debug") => log::LevelFilter::Debug,
         Some("trace") => log::LevelFilter::Trace,
-        _ => log::LevelFilter::Error, // Default: least verbose
+        _ => log::LevelFilter::Info, // Default: balanced verbosity (SEC-003)
     }
 }
 
