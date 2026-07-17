@@ -269,7 +269,7 @@ export function GlobalShortcutSection({
           <div
             className={cn(
               "w-full h-8 px-3 text-sm rounded-md border bg-muted/50",
-              "flex items-center text-left hover:bg-muted transition-colors cursor-pointer",
+              "flex items-center text-left hover:bg-muted transition-[var(--transition-colors)] cursor-pointer",
               !hasShortcut && "text-muted-foreground"
             )}
             onClick={startRecording}
@@ -282,7 +282,7 @@ export function GlobalShortcutSection({
               <button
                 type="button"
                 onClick={handleClear}
-                className="ml-auto p-0.5 rounded hover:bg-background/50 text-muted-foreground hover:text-foreground transition-colors"
+                className="ml-auto p-0.5 rounded hover:bg-background/50 text-muted-foreground hover:text-foreground transition-[var(--transition-colors)]"
                 aria-label="Clear shortcut"
               >
                 <X className="h-3.5 w-3.5" />

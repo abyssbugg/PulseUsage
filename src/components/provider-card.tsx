@@ -250,7 +250,7 @@ export function ProviderCard({
                           e.currentTarget.blur()
                           onRetry()
                         }}
-                        className="opacity-0 hover:opacity-100 focus-visible:opacity-100"
+                        className="opacity-0 hover:opacity-100 focus-visible:opacity-100 transition-[var(--transition-opacity)]"
                         style={{ transform: "translateZ(0)", backfaceVisibility: "hidden" }}
                       >
                         <RefreshCw className="size-[var(--icon-xs)]" />
@@ -550,7 +550,7 @@ function MetricLineRenderer({
                         {...props}
                         type="button"
                         onClick={onResetTimerDisplayModeToggle}
-                        className="text-xs text-muted-foreground tabular-nums hover:text-foreground transition-colors"
+                        className="text-xs text-muted-foreground tabular-nums hover:text-foreground transition-[var(--transition-colors)]"
                       >
                         {secondaryText}
                       </button>
