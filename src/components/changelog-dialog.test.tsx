@@ -273,7 +273,7 @@ describe("ChangelogDialog", () => {
     )
 
     // Back goes to previous view
-    await userEvent.click(screen.getByRole("button", { name: "Back" }))
+    await userEvent.click(screen.getByRole("button", { name: /Back/ }))
     expect(onBack).toHaveBeenCalled()
 
     // Escape should trigger onClose once

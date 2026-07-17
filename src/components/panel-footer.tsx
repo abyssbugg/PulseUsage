@@ -62,6 +62,7 @@ function VersionDisplay({
             onClick={onUpdateCheck}
             className="text-xs text-muted-foreground hover:text-foreground transition-[var(--transition-colors)] cursor-pointer"
             title={updateStatus.message}
+            aria-label="Updates soon. Update check failed. Click to retry."
           >
             Updates soon
           </button>
@@ -77,7 +78,8 @@ function VersionDisplay({
         <button
           type="button"
           onClick={onVersionClick}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+          className="text-xs text-muted-foreground hover:text-foreground transition-[var(--transition-colors)] cursor-pointer"
+          aria-label={`${APP_DISPLAY_NAME} version ${version}. Click to view about dialog.`}
         >
           {APP_DISPLAY_NAME} {version}
         </button>
@@ -131,6 +133,7 @@ export function PanelFooter({
             }}
             className="text-xs text-muted-foreground tabular-nums hover:text-foreground transition-[var(--transition-colors)] cursor-pointer"
             title="Refresh now"
+            aria-label={countdownLabel}
           >
             {countdownLabel}
           </button>
