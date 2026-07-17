@@ -567,7 +567,7 @@ function MetricLineRenderer({
               <button
                 type="button"
                 onClick={onResetTimerDisplayModeToggle}
-                className="text-xs text-muted-foreground tabular-nums hover:text-foreground transition-colors"
+                className="text-xs text-muted-foreground tabular-nums hover:text-foreground transition-[var(--transition-colors)]"
               >
                 {secondaryText}
               </button>

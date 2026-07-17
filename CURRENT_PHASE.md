@@ -5,9 +5,9 @@
 
 ## Current Milestone
 
-**PulseBar v0.8.0 — Program B in flight (B3 next)**
+**PulseBar v0.8.0 — RC Audit in progress**
 
-Repository Recovery is complete. Program S (Security Hardening) merged 4 PRs (#69-#72). Program A (Product Identity) is complete. Program B is at B2 (component migration merged); B3 (Layout Refinement) is next. Architecture is frozen — no new architectural initiatives until Program B is complete.
+Program B is complete (B1-B5 merged). Program S (Security Hardening) merged. Program A (Product Identity) complete. Architecture frozen. RC Audit underway — no new feature work until release candidate is cut.
 
 ## Active Programs
 
@@ -16,7 +16,7 @@ Repository Recovery is complete. Program S (Security Hardening) merged 4 PRs (#6
 | Product phase | PulseBar v0.8.0 |
 | GitHub milestones | v0.8.0 (#1, Program B), v0.8.1 Hardening (#2, CSP POC), v0.9 Platform (#3, Plugin SDK) |
 | Program A — Product Identity | ✅ Complete (PRs #54, #55) |
-| Program B — Professional UI/UX | In progress: B1 ✅ (#56, #59), B2 ✅ (#61); B3 next |
+| Program B — Professional UI/UX | ✅ Complete: B1 ✅, B2 ✅ (#61), B3 ✅ (#75), B4 ✅ (#76), B5 ✅ (#77) |
 | Program S — Security Hardening | ✅ Complete (#69-#72 merged, #73-#74 dep bumps merged) |
 | Branch strategy | One workstream per branch/worktree, per [PRSequencing](docs/governance/pulsebar/PRSequencing.md) |
 | Protected branches | `main`, `release/v0.7.0` |
