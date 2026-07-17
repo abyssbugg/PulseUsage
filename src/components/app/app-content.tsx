@@ -59,9 +59,10 @@ export function AppContent({
   onGlobalShortcutChange,
   onStartOnLoginChange,
 }: AppContentProps) {
-  const { activeView } = useAppUiStore(
+  const { activeView, setActiveView } = useAppUiStore(
     useShallow((state) => ({
       activeView: state.activeView,
+      setActiveView: state.setActiveView,
     }))
   )
 
@@ -96,6 +97,7 @@ export function AppContent({
         resetTimerDisplayMode={resetTimerDisplayMode}
         timeFormatMode={timeFormatMode}
         onResetTimerDisplayModeToggle={onResetTimerDisplayModeToggle}
+        onNavigateSettings={() => setActiveView("settings")}
       />
     )
   }
@@ -139,6 +141,7 @@ export function AppContent({
       resetTimerDisplayMode={resetTimerDisplayMode}
       timeFormatMode={timeFormatMode}
       onResetTimerDisplayModeToggle={onResetTimerDisplayModeToggle}
+      onNavigateHome={() => setActiveView("home")}
     />
   )
 }
