@@ -83,7 +83,7 @@ function SimpleMarkdown({ content }: { content: string }) {
       parts = newParts;
     });
 
-    const linkClass = "text-[var(--link)] hover:underline hover:text-[var(--link-hover)] transition-colors cursor-pointer";
+    const linkClass = "text-[var(--link)] hover:underline hover:text-[var(--link-hover)] transition-[var(--transition-colors)] cursor-pointer";
 
     return parts.map((part, i) => {
       if (part.type === "link") {
@@ -199,7 +199,7 @@ export function ChangelogDialog({ currentVersion, onBack, onClose }: ChangelogDi
           <div className="flex items-center gap-2">
             <button
               onClick={onBack}
-              className="p-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:text-foreground"
+              className="p-1.5 hover:bg-muted rounded-md transition-[var(--transition-colors)] text-muted-foreground hover:text-foreground"
               title="Back"
             >
               <ChevronRight className="size-[var(--icon-lg)] rotate-180" />

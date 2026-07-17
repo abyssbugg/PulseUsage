@@ -60,7 +60,7 @@ function VersionDisplay({
           <button
             type="button"
             onClick={onUpdateCheck}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            className="text-xs text-muted-foreground hover:text-foreground transition-[var(--transition-colors)] cursor-pointer"
             title={updateStatus.message}
           >
             Updates soon
@@ -129,7 +129,7 @@ export function PanelFooter({
               event.currentTarget.blur()
               onRefreshAll()
             }}
-            className="text-xs text-muted-foreground tabular-nums hover:text-foreground transition-colors cursor-pointer"
+            className="text-xs text-muted-foreground tabular-nums hover:text-foreground transition-[var(--transition-colors)] cursor-pointer"
             title="Refresh now"
           >
             {countdownLabel}

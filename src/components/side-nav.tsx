@@ -67,7 +67,7 @@ function NavButton({ isActive, onClick, onContextMenu, children, "aria-label": a
       onContextMenu={onContextMenu}
       aria-label={ariaLabel}
       className={cn(
-        "relative flex items-center justify-center w-full p-2.5 transition-colors",
+        "relative flex items-center justify-center w-full p-2.5 transition-[var(--transition-colors)]",
         "hover:bg-accent",
         isActive
           ? "text-foreground before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-0.5 before:bg-primary dark:before:bg-page-accent before:rounded-full"
@@ -122,7 +122,7 @@ function SortableNavPlugin({ plugin, isActive, isDark, onClick, onContextMenu }:
         <span
           role="img"
           aria-label={plugin.name}
-          className="size-6 inline-block"
+          className="size-[var(--icon-xl)] inline-block"
           style={{
             backgroundColor: getIconColor(plugin.brandColor, isDark),
             WebkitMaskImage: `url(${plugin.iconUrl})`,
@@ -223,7 +223,7 @@ export function SideNav({
         onClick={() => onViewChange("home")}
         aria-label="Home"
       >
-        <GaugeIcon className="size-6 dark:text-page-accent" />
+        <GaugeIcon className="size-[var(--icon-xl)] dark:text-page-accent" />
       </NavButton>
 
       {/* Plugin icons */}
@@ -260,7 +260,7 @@ export function SideNav({
         }}
         aria-label="Help"
       >
-        <CircleHelp className="size-6" />
+        <CircleHelp className="size-[var(--icon-xl)]" />
       </NavButton>
 
       {/* Settings */}
@@ -269,7 +269,7 @@ export function SideNav({
         onClick={() => onViewChange("settings")}
         aria-label="Settings"
       >
-        <Settings className="size-6" />
+        <Settings className="size-[var(--icon-xl)]" />
       </NavButton>
     </nav>
   )
