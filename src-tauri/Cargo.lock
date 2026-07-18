@@ -3411,7 +3411,7 @@ dependencies = [
 
 [[package]]
 name = "pulseusage"
-version = "0.6.28"
+version = "0.8.0"
 dependencies = [
  "aes-gcm",
  "base64 0.22.1",

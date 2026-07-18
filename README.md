@@ -2,19 +2,19 @@
 
 See your usage at a glance from your menu bar. No digging through dashboards.
 
-![PulseUsage Screenshot](screenshot.png)
+![PulseBar Screenshot](screenshot.png)
 
 ## Download
 
-[**Download PulseUsage from GitHub Releases**](https://github.com/abyssbugg/PulseUsage/releases).
+[**Download PulseBar from GitHub Releases**](https://github.com/abyssbugg/PulseUsage/releases).
 
 Current macOS distribution: direct GitHub Releases downloads.
-Binary app auto-updates are not implemented yet. PulseUsage can auto-refresh provider usage data on a schedule, but that is separate from updating the app itself.
+Binary app auto-updates are not implemented yet. PulseBar can auto-refresh provider usage data on a schedule, but that is separate from updating the app itself.
 Downloaded macOS builds may show Gatekeeper warnings until signing and notarization are configured.
 
 ## What It Does
 
-PulseUsage lives in your menu bar and shows you how much of your AI coding subscriptions you've used. Progress bars, badges, and clear labels. No mental math required.
+PulseBar lives in your menu bar and shows you how much of your AI coding subscriptions you've used. Progress bars, badges, and clear labels. No mental math required.
 
 - **One glance.** All your AI tools, one panel.
 - **Always up-to-date.** Refreshes automatically on a schedule you pick.
@@ -34,8 +34,8 @@ The status bar icon opens a menu with:
   - **Open Log Folder** — reveal the log directory in Finder.
   - **Copy Log Path** — copy the log file path to the clipboard.
   - **Export Diagnostics…** — copy log files plus a redacted metadata snapshot (app version, platform, plugin ids/names/versions; no credentials or settings) into a timestamped folder under Downloads and reveal it.
-- **About PulseUsage** — open the about panel.
-- **Download Latest Release** — open the GitHub releases page. PulseUsage does not self-update; download new builds manually.
+- **About PulseBar** — open the about panel.
+- **Download Latest Release** — open the GitHub releases page. PulseBar does not self-update; download new builds manually.
 - **Quit** — exit the app.
 
 ## Supported Providers
@@ -65,7 +65,7 @@ Want a provider that's not listed? [Open an issue.](https://github.com/abyssbugg
 
 ## Independent Project
 
-This repository is the independent development home for PulseUsage.
+This repository is the independent development home for PulseBar.
 
 Useful upstream fixes can be reviewed and brought into this repo deliberately.
 
@@ -81,7 +81,7 @@ Keep it simple. No feature creep, no AI-generated commit messages, test your cha
 
 ## Development Notes
 
-PulseUsage uses AI-assisted development tools such as [Cursor](https://cursor.com), [Claude Code](https://docs.anthropic.com/en/docs/claude-code), and [Codex CLI](https://github.com/openai/codex). Changes should still be reviewed, tested, and kept small.
+PulseBar uses AI-assisted development tools such as [Cursor](https://cursor.com), [Claude Code](https://docs.anthropic.com/en/docs/claude-code), and [Codex CLI](https://github.com/openai/codex). Changes should still be reviewed, tested, and kept small.
 
 ## Release and Environment Checks
 
@@ -94,7 +94,7 @@ Before diagnosing missing providers, verify the active checkout and production b
 - Bundle plugins with `bun run bundle:plugins`.
 - Confirm bundled manifests with `find src-tauri/resources/bundled_plugins -maxdepth 2 -name plugin.json`.
 - Build releases with `bun run build:release`; the script fails if bundled plugin manifests are missing.
-- Verify installed app resources under `/Applications/PulseUsage.app/Contents/Resources/resources/bundled_plugins/`.
+- Verify installed app resources under `/Applications/PulseBar.app/Contents/Resources/resources/bundled_plugins/`.
 
 Provider manifests list supported metrics. Runtime cards show returned metrics, and provider detail pages mark supported metrics as `Not returned` when the provider or local data source does not expose those fields.
 
