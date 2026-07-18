@@ -1,5 +1,65 @@
 # Changelog
 
+## v0.8.0
+
+### Highlights
+- **Product identity**: PulseBar branding across all user-visible surfaces (About, tray, footer, dialogs)
+- **Design system**: Frozen token API with 40+ design tokens; all components migrated to token-based styling
+- **Accessibility**: Restored focus indicators, reduced-motion support, ARIA labels, dialog roles
+- **Security hardening**: CORS removed from local HTTP API, mutex recovery, log level defaults, plugin isolation audit
+- **Capability enforcement**: Schema v2 `hostCapabilities` with v1 compatibility for third-party plugins
+- **Architecture**: `host_api.rs` monolith decomposed into 13 cohesive modules; capability-gated injection
+
+### Program A — Product Identity
+- Centralize product name in `identity.rs` / `app-identity.ts` (PRs #54, #55)
+- PulseBar display name on About dialog, tray menu, footer, changelog
+- Bundle identifier kept as `com.abyssbugg.pulseusage` for compatibility
+
+### Program B — Professional UI/UX
+- **B1**: Design token foundation — 40+ CSS custom properties for spacing, typography, elevation, motion, focus, z-index, icon/control sizing, semantic colors (PRs #56, #59)
+- **B2**: Component migration — 38/40 hardcoded visual constants replaced with frozen tokens (PR #61)
+- **B3**: Empty states — Settings icon + guidance + "Go to Settings" CTA; Home icon + guidance + "Back to Overview" CTA (PR #75)
+- **B4**: Visual polish — Unified transitions to `--transition-colors` token; nav icons to `--icon-xl` token; smooth opacity fade on refresh button (PR #76)
+- **B5**: Accessibility — Removed global `*:focus { outline: none !important }` (WCAG 2.1 SC 2.4.7); extended `prefers-reduced-motion` to spin and dialog animations; added `role="dialog"`, `aria-modal`, `aria-label` to dialogs and footer buttons (PR #77)
+
+### Program S — Security Hardening
+- Removed CORS wildcard from local HTTP API (SEC-001, PR #70)
+- Cache mutex poisoned recovery (SEC-002, PR #71)
+- Tray default log level changed from Error to Info; fern filter kept at Trace (SEC-003, PR #72)
+- Plugin engine isolation audit completed — no Critical/High findings (SEC-2026-07-09-B)
+- ADRs for CSP (S1), keychain allowlist (S2), filesystem confinement (S3) — all deferred to future milestones
+
+### Program 1 — Architecture
+- `host_api.rs` (4,816 LOC) decomposed into 13 modules: `logging`, `fs`, `plist`, `crypto`, `env`, `sqlite`, `ls`, `http`, `keychain`, `ccusage`, `utils`, `redaction`, `shared` (PRs #30–#45)
+- Zero behavior changes; all 164 Rust + 1112 JS tests pass throughout
+
+### Program 2 — Capability Enforcement
+- `HostCapability` enum with 15 capabilities; `HostCapabilitySet` with `from_strings`, `infer_v1_capabilities`, `all` (PR #47)
+- Orchestrator enforces capabilities; undeclared capabilities → TypeError (fail-safe) (PR #48)
+- All 18 bundled providers migrated to schema v2 `hostCapabilities` (PRs #49, #50)
+- v1 compatibility map retained for third-party plugin support
+
+### Repository
+- Governance framework: 8 governance docs, audit process, 5 audit charters (PRs #52, #57)
+- Project control center: CURRENT_PHASE, PROJECT_STATUS, ROADMAP, RELEASE_PLAN, ACTIVE_BRANCHES, TECHNICAL_DEBT
+- Repository recovery: 12 stale branches deleted, duplicate files removed, dependabot PRs consolidated
+- Dependency bumps: tauri 2.11.5, rquickjs 0.12.1, typescript 7.0.2, log 0.4.33, time 0.3.53, uuid 1.23.4
+
+### Known Issues
+- CSP not enforced (deferred to v0.8.1 POC, issue #65)
+- Keychain service-name allowlist not implemented (deferred to v0.9 Plugin SDK, issue #66)
+- Filesystem path confinement not implemented (deferred to v0.9 Plugin SDK, issue #67)
+- Antigravity LS probe hardening (deferred to v0.9, issue #26)
+- `aes-gcm` 0.11 upgrade deferred (breaking API changes, no CVE in 0.10.3)
+- Dialog focus trapping not implemented (acceptable for menu-bar app pattern)
+
+### Upgrade Notes
+- This is a major version bump from 0.6.x to 0.8.0
+- Bundle identifier unchanged (`com.abyssbugg.pulseusage`) — no data migration needed
+- Application Support directory unchanged — settings persist across upgrade
+- Plugin schema v1 compatibility retained — existing plugins continue to work
+- Local HTTP API no longer sends CORS headers — browser-based access requires same-origin or proxy
+
 ## v0.6.28
 
 ### New Features
