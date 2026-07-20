@@ -24,6 +24,10 @@ set -euo pipefail
 if [[ "$1" == "run" && "$2" == "bundle:plugins" ]]; then
   mkdir -p src-tauri/resources/bundled_plugins/factory
   printf '{}\n' > src-tauri/resources/bundled_plugins/factory/plugin.json
+  if [[ -d plugins/warp ]]; then
+    mkdir -p src-tauri/resources/bundled_plugins/warp
+    printf '{}\n' > src-tauri/resources/bundled_plugins/warp/plugin.json
+  fi
   exit 0
 fi
 
@@ -52,3 +56,29 @@ if ! grep -q "Required plugin 'warp' not found in source" "$OUTPUT_FILE"; then
 fi
 
 echo "✓ build-release.sh fails when required source plugins are missing"
+
+mkdir -p "$TMP_DIR/plugins/warp"
+
+cat > "$TMP_DIR/bin/codesign" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >> "$CODE_SIGN_LOG"
+EOF
+chmod +x "$TMP_DIR/bin/codesign"
+
+CODE_SIGN_LOG="$TMP_DIR/codesign.log"
+export CODE_SIGN_LOG
+
+if ! PATH="$TMP_DIR/bin:$PATH" "$TMP_DIR/scripts/build-release.sh" --bundles app > "$OUTPUT_FILE" 2>&1; then
+  cat "$OUTPUT_FILE"
+  echo "Expected build-release.sh to succeed with all required plugins present." >&2
+  exit 1
+fi
+
+if ! grep -q -- "--verify --deep --strict .*PulseUsage.app" "$CODE_SIGN_LOG"; then
+  cat "$OUTPUT_FILE"
+  echo "Expected build-release.sh to strictly verify the packaged app signature." >&2
+  exit 1
+fi
+
+echo "✓ build-release.sh strictly verifies the packaged app signature"

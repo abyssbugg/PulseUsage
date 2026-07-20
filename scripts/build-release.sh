@@ -41,6 +41,19 @@ rm -rf src-tauri/target/release/bundle
 # Build
 bun tauri build "$@"
 
+APP_BUNDLE=$(find src-tauri/target/release/bundle/macos -maxdepth 1 -type d -name '*.app' -print -quit 2>/dev/null)
+if [[ -z "$APP_BUNDLE" ]]; then
+  echo "Error: Packaged macOS app bundle not found."
+  exit 1
+fi
+
+if ! codesign --verify --deep --strict "$APP_BUNDLE"; then
+  echo "Error: Packaged macOS app failed strict code-signature verification."
+  exit 1
+fi
+
+echo "✓ Verified code signature for $APP_BUNDLE"
+
 echo ""
 echo "✓ Build complete! Output:"
 ls -la src-tauri/target/release/bundle/dmg/*.dmg 2>/dev/null || ls -la src-tauri/target/release/bundle/macos/*.app
